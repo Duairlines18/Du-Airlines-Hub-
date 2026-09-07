@@ -13,51 +13,868 @@ window.DU_AIRLINES_ENV = {
 <section id="app" class="hidden"><header class="top"><div class="brand">DU AIRLINES <span>ADMIN</span></div><button id="logout" class="btn ghost">Log out</button></header><div class="layout"><nav id="nav"></nav><main id="main"></main></div></section>
 <dialog id="modal"><form method="dialog" class="modal" id="modalForm"></form></dialog>
 <script>
-const env=window.DU_AIRLINES_ENV||{};const configured=!!(env.SUPABASE_URL&&env.SUPABASE_ANON_KEY);const sb=configured?window.supabase.createClient(env.SUPABASE_URL,env.SUPABASE_ANON_KEY):null;
-const state={page:'dashboard',athletes:[],cohorts:[],staff:[],exercises:[],programmes:[],feedback:[],blocks:[],sessions:[]};
-const pages=['dashboard','athletes','cohorts','staff','programmes','library','blocks','feedback','access','settings'];
-const labels={dashboard:'Dashboard',athletes:'Athletes',cohorts:'Cohorts',staff:'Staff',programmes:'Programmes',library:'Exercise Library',blocks:'Saved Blocks',feedback:'Feedback',access:'Access',settings:'Settings'};
+
+const env=window.DU_AIRLINES_ENV||{};
+const configured=!!(env.SUPABASE_URL&&env.SUPABASE_ANON_KEY);
+const sb=configured?window.supabase.createClient(env.SUPABASE_URL,env.SUPABASE_ANON_KEY):null;
+
+const state={
+  page:'dashboard',
+  admin:null,
+  athletes:[],
+  professionals:[],
+  cohorts:[],
+  staff:[],
+  exercises:[],
+  programmes:[],
+  programmeWeeks:[],
+  programmeTiers:[],
+  trainingDays:[],
+  sessionBlocks:[],
+  feedback:[],
+  blocks:[],
+  sessions:[],
+  accessCodes:[],
+  programmeContext:null,
+  loadErrors:[]
+};
+
+const pages=['dashboard','athletes','professionals','cohorts','staff','programmes','library','blocks','feedback','access','settings'];
+const labels={
+  dashboard:'Dashboard',
+  athletes:'Athletes',
+  professionals:'Professionals',
+  cohorts:'Cohorts',
+  staff:'Staff',
+  programmes:'Programmes',
+  library:'Exercise Library',
+  blocks:'Saved Blocks',
+  feedback:'Feedback',
+  access:'Access',
+  settings:'Settings'
+};
+
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-function nav(){document.getElementById('nav').innerHTML=pages.map(p=>`<button data-page="${p}" class="${state.page===p?'active':''}">${labels[p]}</button>`).join('')}
-async function load(){if(!sb)return;const qs=[['athletes','athletes'],['cohorts','cohorts'],['staff_profiles','staff'],['exercises','exercises'],['programmes','programmes'],['feedback','feedback'],['saved_blocks','blocks'],['hub_sessions','sessions']];for(const [table,key] of qs){const {data,error}=await sb.from(table).select('*').order('created_at',{ascending:false});if(!error)state[key]=data||[];}render();}
-function metric(n,label){return `<div class="card metric"><strong>${n}</strong><div class="muted">${label}</div></div>`}
-function render(){nav();const m=document.getElementById('main');if(state.page==='dashboard'){m.innerHTML=`<h1>Control Room</h1><p class="muted">What do you need to control today?</p><div class="grid">${metric(state.cohorts.filter(x=>x.status==='live').length,'Active Cohorts')}${metric(state.athletes.filter(x=>x.athlete_type==='private'&&x.access_status==='active').length,'Private Athletes')}${metric(state.athletes.filter(x=>x.athlete_type==='school'&&x.access_status==='active').length,'School Athletes')}${metric(state.feedback.filter(x=>x.status==='waiting').length,'Feedback Waiting')}</div><div class="toolbar"><h2>Quick Actions</h2></div><div class="grid"><button class="btn primary" data-add="athlete">Add Athlete</button><button class="btn ghost" data-add="cohort">Create Cohort</button><button class="btn ghost" data-add="exercise">Add Exercise</button><button class="btn ghost" data-page="feedback">Review Feedback</button></div>`;return;}
-if(state.page==='athletes')return renderAthletes(m);if(state.page==='cohorts')return renderCohorts(m);if(state.page==='library')return renderLibrary(m);if(state.page==='feedback')return renderFeedback(m);if(state.page==='access')return renderAccess(m);if(state.page==='staff')return renderSimple(m,'Staff',state.staff,x=>`${esc(x.full_name)}<p>${esc(x.role_title||'Coach / Staff')} · ${esc(x.access_status)}</p>`,'staff');if(state.page==='programmes')return renderSimple(m,'Programmes',state.programmes,x=>`${esc(x.name)}<p>${x.duration_weeks||10} weeks · ${esc(x.status)}</p>`,'programme');if(state.page==='blocks')return renderSimple(m,'Saved Blocks',state.blocks,x=>`${esc(x.name)}<p>${esc(x.description||'Reusable programme block')}</p>`,'block');if(state.page==='settings'){m.innerHTML='<h1>Settings</h1><div class="card"><h3>Admin account</h3><p class="muted">Password reset and account security are handled by Supabase Auth.</p><button class="btn ghost" id="passwordReset">Send password reset email</button></div>';return;}}
-function renderSimple(m,title,rows,fmt,type){m.innerHTML=`<div class="toolbar"><div><h1>${title}</h1><p class="muted">${rows.length} records</p></div><button class="btn primary" data-add="${type}">Add ${title.replace(/s$/,'')}</button></div><div class="list">${rows.map(x=>`<div class="item"><div><strong>${fmt(x)}</strong></div><span class="pill">${esc(x.status||x.access_status||'Active')}</span></div>`).join('')||'<div class="card muted">No records yet.</div>'}</div>`}
-function renderAthletes(m){m.innerHTML=`<div class="toolbar"><div><h1>Athletes</h1><p class="muted">Edit identity, week, programme and access without touching code.</p></div><button class="btn primary" data-add="athlete">Add Athlete</button></div><input class="search" id="search" placeholder="Search athlete…"><div class="list" id="athleteList">${athleteRows(state.athletes)}</div>`}
-function athleteRows(rows){return rows.map(a=>`<div class="item" data-search="${esc((a.full_name+' '+(a.events||[]).join(' ')).toLowerCase())}"><div><strong>${esc(a.full_name)}</strong><p>${esc(a.athlete_type)} · Week ${a.current_week||1} · ${esc((a.events||[]).join(', ')||'Event not set')}</p></div><div class="row"><span class="pill">${esc(a.access_status)}</span><button class="btn ghost" data-edit-athlete="${a.id}">Edit</button></div></div>`).join('')||'<div class="card muted">No athletes yet.</div>'}
-function renderCohorts(m){m.innerHTML=`<div class="toolbar"><div><h1>Cohorts</h1><p class="muted">Schools and grouped development pathways.</p></div><button class="btn primary" data-add="cohort">Create Cohort</button></div><div class="list">${state.cohorts.map(c=>`<div class="item"><div><strong>${esc(c.name)}</strong><p>Week ${c.current_week||1} · ${esc(c.current_phase||'Phase not set')}</p></div><div class="row"><span class="pill">${esc(c.status)}</span><button class="btn ghost" data-edit-cohort="${c.id}">Edit</button></div></div>`).join('')||'<div class="card muted">No cohorts yet.</div>'}</div>`}
-function renderLibrary(m){m.innerHTML=`<div class="toolbar"><div><h1>Exercise Library</h1><p class="muted">Permanent codes. Update a video once; linked sessions keep the reference.</p></div><button class="btn primary" data-add="exercise">Add Exercise</button></div><input class="search" id="search" placeholder="Search ACT02, PLY, glute…"><div class="list" id="exerciseList">${exerciseRows(state.exercises)}</div>`}
-function exerciseRows(rows){return rows.map(e=>`<div class="item" data-search="${esc((e.code+' '+e.name+' '+(e.category_slug||'')).toLowerCase())}"><div><strong><span class="code">${esc(e.code)}</span> — ${esc(e.name)}</strong><p>${esc(e.purpose||e.category_slug||'')}</p></div><button class="btn ghost" data-edit-exercise="${e.id}">Edit</button></div>`).join('')||'<div class="card muted">No exercises yet.</div>'}
-function renderFeedback(m){m.innerHTML=`<h1>Feedback Waiting</h1><p class="muted">Low-friction athlete and coach checkpoints.</p><div class="list">${state.feedback.map(f=>`<div class="item"><div><strong>${esc(f.feedback_type)} feedback · Week ${f.week_number||'-'}</strong><p>${esc(JSON.stringify(f.payload||{}).slice(0,160))}</p></div><div class="row"><span class="pill">${esc(f.status)}</span>${f.status==='waiting'?`<button class="btn ghost" data-review="${f.id}">Mark Reviewed</button>`:''}</div></div>`).join('')||'<div class="card muted">Nothing waiting.</div>'}</div>`}
-function renderAccess(m){m.innerHTML=`<h1>Access Management</h1><p class="muted">Create access codes by storing only their SHA-256 hash. Raw codes are shown only when you create them.</p><div class="grid"><button class="btn primary" data-code-type="cohort">New Cohort Code</button><button class="btn ghost" data-code-type="staff">New Staff Code</button><button class="btn ghost" data-code-type="private_athlete">New Private Athlete Code</button></div><div class="notice">Session revoke controls are backed by the <span class="code">hub_sessions</span> table. ${state.sessions.length} sessions currently stored.</div>`}
-function openModal(html){const d=document.getElementById('modal'),f=document.getElementById('modalForm');f.innerHTML=html;d.showModal()}
-function athleteForm(a={}){openModal(`<h2>${a.id?'Edit':'Add'} Athlete</h2><div class="formgrid"><label>Full registered name<input name="full_name" required value="${esc(a.full_name||'')}"></label><label>Display first name<input name="display_name" required value="${esc(a.display_name||'')}"></label><label>Type<select name="athlete_type"><option value="school" ${a.athlete_type==='school'?'selected':''}>School</option><option value="private" ${a.athlete_type==='private'?'selected':''}>Private</option></select></label><label>Form / Tier<input name="form_tier" value="${esc(a.form_tier||'')}"></label><label>Events (comma separated)<input name="events" value="${esc((a.events||[]).join(', '))}"></label><label>Current Week<input name="current_week" type="number" min="1" max="52" value="${a.current_week||1}"></label><label>Current Phase<input name="current_phase" value="${esc(a.current_phase||'')}"></label><label>Access<select name="access_status"><option>active</option><option ${a.access_status==='paused'?'selected':''}>paused</option><option ${a.access_status==='archived'?'selected':''}>archived</option></select></label><label class="wide">Admin-only notes<textarea name="admin_notes">${esc(a.admin_notes||'')}</textarea></label></div><input type="hidden" name="id" value="${a.id||''}"><div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveAthlete">Save Athlete</button></div>`)}
-function cohortForm(c={}){openModal(`<h2>${c.id?'Edit':'Create'} Cohort</h2><div class="formgrid"><label class="wide">Cohort Name<input name="name" required value="${esc(c.name||'')}"></label><label>Current Week<input name="current_week" type="number" min="1" value="${c.current_week||1}"></label><label>Phase<input name="current_phase" value="${esc(c.current_phase||'')}"></label><label>Status<select name="status">${['draft','scheduled','live','completed','paused','archived'].map(x=>`<option ${c.status===x?'selected':''}>${x}</option>`).join('')}</select></label><label>Tier<input name="tier" value="${esc(c.tier||'')}"></label><label class="wide">Internal notes<textarea name="internal_notes">${esc(c.internal_notes||'')}</textarea></label></div><input type="hidden" name="id" value="${c.id||''}"><div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveCohort">Save Cohort</button></div>`)}
-function exerciseForm(e={}){openModal(`<h2>${e.id?'Edit':'Add'} Exercise</h2><div class="formgrid"><label>Code<input name="code" required value="${esc(e.code||'')}"></label><label>Name<input name="name" required value="${esc(e.name||'')}"></label><label>Category / prefix<input name="category_slug" value="${esc(e.category_slug||'')}"></label><label>Video ID<input name="video_id" value="${esc(e.video_id||'')}"></label><label class="wide">Purpose<input name="purpose" value="${esc(e.purpose||'')}"></label><label class="wide">Coaching cues<textarea name="coaching_cues">${esc(e.coaching_cues||'')}</textarea></label><label class="wide">Default dosage<input name="default_dosage" value="${esc(e.default_dosage||'')}"></label></div><input type="hidden" name="id" value="${e.id||''}"><div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveExercise">Save Exercise</button></div>`)}
-async function save(table,obj,id){let q=id?sb.from(table).update(obj).eq('id',id):sb.from(table).insert(obj);const {error}=await q;if(error)alert(error.message);else{document.getElementById('modal').close();await load()}}
-function codeForm(type){
-  const isCohort=type==='cohort',isStaff=type==='staff';
-  const rows=isCohort?state.cohorts:(isStaff?state.staff:state.athletes.filter(a=>a.athlete_type==='private'));
-  const label=isCohort?'Cohort':(isStaff?'Staff member':'Private athlete');
-  if(!rows.length){alert('Create a '+label.toLowerCase()+' first, then come back here.');return;}
-  const options=rows.map(x=>`<option value="${esc(x.id)}">${esc(x.name||x.full_name||x.display_name||'Unnamed')}</option>`).join('');
-  openModal(`<h2>Create ${label} Access Code</h2><p class="muted">No UUIDs needed. Just choose who the code belongs to and type the code you want them to use.</p><div class="formgrid"><label class="wide">Choose ${label}<select name="target_id" required>${options}</select></label><label class="wide">Access code<input name="raw_code" required autocomplete="off" placeholder="Example: DRAGON26"></label></div><input type="hidden" name="code_type" value="${type}"><div class="notice">You choose the code. After saving, the database stores only a secure hash — not the readable code.</div><div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveAccessCode">Create Code</button></div>`)
+const fmtDate=v=>v?new Date(v).toLocaleString():'—';
+const byId=(rows,id)=>rows.find(x=>x.id===id);
+const cohortFor=id=>byId(state.cohorts,id);
+const cohortName=id=>cohortFor(id)?.name||'Not assigned';
+const programmeName=id=>byId(state.programmes,id)?.name||'Not assigned';
+const activeAccount=a=>a?.access_status==='active';
+const isPrivateAthlete=a=>!!a?.athlete_user_id;
+const isParentManaged=a=>!!a?.parent_user_id;
+const athleteKind=a=>isParentManaged(a)?'Parent-managed':isPrivateAthlete(a)?'Private Athlete':'School / legacy profile';
+const feedbackNeedsReview=f=>f.status!=='no_change'&&!f.reviewed_at;
+const feedbackLabel=f=>{
+  if(f.status==='adjustment_flagged')return 'Adjustment flagged';
+  if(f.status==='reviewed')return 'Review';
+  if(f.status==='waiting')return 'Waiting';
+  if(f.status==='no_change')return 'No change';
+  return f.status||'Unknown';
+};
+
+function nav(){
+  document.getElementById('nav').innerHTML=pages.map(p=>`<button data-page="${p}" class="${state.page===p?'active':''}">${labels[p]}</button>`).join('');
 }
+
+async function tableRows(table,key,order='created_at'){
+  const {data,error}=await sb.from(table).select('*').order(order,{ascending:false});
+  if(error){
+    state.loadErrors.push(`${table}: ${error.message}`);
+    state[key]=[];
+    return;
+  }
+  state[key]=data||[];
+}
+
+async function load(){
+  if(!sb)return;
+  state.loadErrors=[];
+  await Promise.all([
+    tableRows('athletes','athletes'),
+    tableRows('professional_members','professionals'),
+    tableRows('cohorts','cohorts'),
+    tableRows('staff_profiles','staff'),
+    tableRows('exercises','exercises'),
+    tableRows('programmes','programmes'),
+    tableRows('programme_weeks','programmeWeeks'),
+    tableRows('programme_tiers','programmeTiers','sort_order'),
+    tableRows('training_days','trainingDays','sort_order'),
+    tableRows('session_blocks','sessionBlocks','sort_order'),
+    tableRows('feedback','feedback'),
+    tableRows('saved_blocks','blocks'),
+    tableRows('hub_sessions','sessions'),
+    tableRows('access_codes','accessCodes')
+  ]);
+  render();
+}
+
+function metric(n,label){return `<div class="card metric"><strong>${n}</strong><div class="muted">${label}</div></div>`}
+function loadWarning(){
+  return state.loadErrors.length?`<div class="notice" style="color:#ffcf9f">Some admin data could not load. Nothing was changed. ${esc(state.loadErrors.join(' | '))}</div>`:'';
+}
+
+function render(){
+  nav();
+  const m=document.getElementById('main');
+  if(state.page==='dashboard'){
+    const activeCohorts=state.cohorts.filter(x=>x.status==='live').length;
+    const privateAthletes=state.athletes.filter(a=>isPrivateAthlete(a)&&activeAccount(a)).length;
+    const parentAthletes=state.athletes.filter(a=>isParentManaged(a)&&activeAccount(a)).length;
+    const professionals=state.professionals.filter(p=>p.access_status==='active').length;
+    const feedbackReview=state.feedback.filter(feedbackNeedsReview).length;
+    const sharedCodes=state.accessCodes.filter(c=>c.status==='active'&&(c.code_type==='cohort'||c.code_type==='staff')).length;
+    m.innerHTML=`${loadWarning()}<h1>Control Room</h1><p class="muted">Live operations view from the same Supabase data used by the Performance Hub.</p>
+    <div class="grid">
+      ${metric(activeCohorts,'Active Cohorts')}
+      ${metric(privateAthletes,'Private Athlete Accounts')}
+      ${metric(parentAthletes,'Parent-Managed Athletes')}
+      ${metric(professionals,'Professional Members')}
+      ${metric(feedbackReview,'Feedback Needs Review')}
+      ${metric(sharedCodes,'Active Shared Codes')}
+    </div>
+    <div class="toolbar"><h2>Quick Actions</h2></div>
+    <div class="grid">
+      <button class="btn primary" data-page="feedback">Review Feedback</button>
+      <button class="btn ghost" data-page="cohorts">Manage Cohorts</button>
+      <button class="btn ghost" data-page="library">Exercise Library</button>
+      <button class="btn ghost" data-page="access">Manage Access</button>
+    </div>`;
+    return;
+  }
+  if(state.page==='athletes')return renderAthletes(m);
+  if(state.page==='professionals')return renderProfessionals(m);
+  if(state.page==='cohorts')return renderCohorts(m);
+  if(state.page==='library')return renderLibrary(m);
+  if(state.page==='feedback')return renderFeedback(m);
+  if(state.page==='access')return renderAccess(m);
+  if(state.page==='staff')return renderStaff(m);
+  if(state.page==='programmes')return renderProgrammes(m);
+  if(state.page==='programme-editor')return renderProgrammeEditor(m);
+  if(state.page==='blocks')return renderBlocks(m);
+  if(state.page==='settings')return renderSettings(m);
+}
+
+function renderAthletes(m){
+  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Athletes</h1><p class="muted">Account records are created through the existing onboarding flows. Manage cohort assignment, coach notes and safe access actions here.</p></div></div>
+  <input class="search" id="search" placeholder="Search athlete…">
+  <div class="list" id="athleteList">${athleteRows(state.athletes)}</div>`;
+}
+
+function athleteRows(rows){
+  return rows.map(a=>{
+    const cohort=cohortFor(a.cohort_id);
+    const week=cohort?.current_week?`Week ${cohort.current_week}`:'No live week';
+    const kind=athleteKind(a);
+    const onboarding=(a.parent_user_id||a.athlete_user_id)?(a.onboarding_complete?'Onboarding complete':'Onboarding pending'):'Shared/legacy record';
+    const actions=(a.parent_user_id||a.athlete_user_id)?accessButtons('athlete',a):'';
+    return `<div class="item" data-search="${esc(((a.full_name||'')+' '+kind+' '+(cohort?.name||'')).toLowerCase())}">
+      <div><strong>${esc(a.full_name||a.display_name||'Unnamed athlete')}</strong>
+      <p>${esc(kind)} · ${esc(cohort?.name||'Not assigned')} · ${esc(week)} · ${esc(onboarding)}</p></div>
+      <div class="row"><span class="pill">${esc(a.access_status||'pending')}</span>${a.cohort_id?`<button class="btn ghost" data-programme-context="athlete" data-programme-id="${a.id}">Current Programme</button>`:''}${(a.parent_user_id||a.athlete_user_id)?`<button class="btn ghost" data-substitutions="${a.id}">Exercise Swap</button>`:''}<button class="btn ghost" data-edit-athlete="${a.id}">Manage</button>${actions}</div>
+    </div>`;
+  }).join('')||'<div class="card muted">No athletes yet.</div>';
+}
+
+function renderProfessionals(m){
+  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Professional Members</h1><p class="muted">Professional Performance account access and cohort assignment.</p></div></div>
+  <div class="list">${state.professionals.map(p=>{
+    const cohort=cohortFor(p.cohort_id);
+    return `<div class="item"><div><strong>${esc([p.first_name,p.last_name].filter(Boolean).join(' ')||p.email||'Unnamed member')}</strong>
+    <p>${esc(p.email||'')} · ${esc(cohort?.name||'Not assigned')} · ${cohort?.current_week?'Week '+cohort.current_week:'No live week'} · ${p.onboarding_complete?'Onboarding complete':'Onboarding pending'}</p></div>
+    <div class="row"><span class="pill">${esc(p.access_status||'pending')}</span>${p.cohort_id?`<button class="btn ghost" data-programme-context="professional" data-programme-id="${p.id}">Current Programme</button>`:''}<button class="btn ghost" data-edit-professional="${p.id}">Manage</button>${accessButtons('professional',p)}</div></div>`;
+  }).join('')||'<div class="card muted">No professional members yet.</div>'}</div>`;
+}
+
+function accessButtons(kind,row){
+  if(row.access_status==='pending')return `<button class="btn ghost" data-access-kind="${kind}" data-access-id="${row.id}" data-access-action="activate">Activate Complimentary</button>`;
+  if(row.access_status==='active')return `<button class="btn ghost" data-access-kind="${kind}" data-access-id="${row.id}" data-access-action="pause">Pause</button>`;
+  if(row.access_status==='paused')return `<button class="btn ghost" data-access-kind="${kind}" data-access-id="${row.id}" data-access-action="resume">Resume</button>`;
+  return '';
+}
+
+function cohortOptions(selected=''){
+  return `<option value="">Not assigned</option>`+state.cohorts.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${esc(c.name)} — Week ${c.current_week||1}</option>`).join('');
+}
+
+function athleteForm(a={}){
+  openModal(`<h2>Manage Athlete</h2>
+  <p class="muted">The cohort is the source of truth for the athlete's current week. This screen does not maintain a separate athlete week.</p>
+  <div class="formgrid">
+    <label>Full registered name<input name="full_name" required value="${esc(a.full_name||'')}"></label>
+    <label>Display first name<input name="display_name" required value="${esc(a.display_name||'')}"></label>
+    <label class="wide">Assigned cohort<select name="cohort_id">${cohortOptions(a.cohort_id||'')}</select></label>
+    <label class="wide">Coach note<textarea name="coach_note">${esc(a.coach_note||'')}</textarea></label>
+  </div>
+  <input type="hidden" name="id" value="${a.id||''}">
+  <div class="notice">Access: ${esc(a.access_status||'pending')} · Reason: ${esc(a.access_reason||'not set')} · Payment: ${esc(a.payment_status||'pending')}</div>
+  <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveAthlete">Save Assignment</button></div>`);
+}
+
+function professionalForm(p={}){
+  openModal(`<h2>Manage Professional</h2>
+  <div class="formgrid">
+    <label>First name<input name="first_name" value="${esc(p.first_name||'')}"></label>
+    <label>Last name<input name="last_name" value="${esc(p.last_name||'')}"></label>
+    <label class="wide">Assigned cohort<select name="cohort_id">${cohortOptions(p.cohort_id||'')}</select></label>
+    <label class="wide">Coach note<textarea name="coach_note">${esc(p.coach_note||'')}</textarea></label>
+  </div>
+  <input type="hidden" name="id" value="${p.id||''}">
+  <div class="notice">Access: ${esc(p.access_status||'pending')} · Reason: ${esc(p.access_reason||'not set')} · Payment: ${esc(p.payment_status||'pending')}</div>
+  <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveProfessional">Save Assignment</button></div>`);
+}
+
+function renderCohorts(m){
+  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Cohorts</h1><p class="muted">This is the source of truth for programme assignment and current week.</p></div><button class="btn primary" data-add="cohort">Create Cohort</button></div>
+  <div class="list">${state.cohorts.map(c=>`<div class="item"><div><strong>${esc(c.name)}</strong>
+  <p>${esc(programmeName(c.programme_id))} · Week ${c.current_week||1} · ${esc(c.current_phase||'Phase not set')} · ${c.expected_sessions_per_week||'—'} sessions/week</p></div>
+  <div class="row"><span class="pill">${esc(c.status)}</span><button class="btn ghost" data-programme-context="cohort" data-programme-id="${c.id}">Current Programme</button><button class="btn ghost" data-edit-cohort="${c.id}">Edit</button></div></div>`).join('')||'<div class="card muted">No cohorts yet.</div>'}</div>`;
+}
+
+function programmeOptions(selected=''){
+  return `<option value="">Choose programme</option>`+state.programmes.map(p=>`<option value="${p.id}" ${p.id===selected?'selected':''}>${esc(p.name)}</option>`).join('');
+}
+
+function cohortForm(c={}){
+  openModal(`<h2>${c.id?'Edit':'Create'} Cohort</h2>
+  <div class="formgrid">
+    <label class="wide">Cohort Name<input name="name" required value="${esc(c.name||'')}"></label>
+    <label class="wide">Programme<select name="programme_id" required>${programmeOptions(c.programme_id||'')}</select></label>
+    <label>Current Week<input name="current_week" type="number" min="1" max="52" value="${c.current_week||1}"></label>
+    <label>Phase<input name="current_phase" value="${esc(c.current_phase||'')}"></label>
+    <label>Expected sessions / week<input name="expected_sessions_per_week" type="number" min="1" max="7" value="${c.expected_sessions_per_week||3}"></label>
+    <label>Status<select name="status">${['draft','scheduled','live','completed','paused','archived'].map(x=>`<option ${c.status===x?'selected':''}>${x}</option>`).join('')}</select></label>
+    <label>Tier<input name="tier" value="${esc(c.tier||'')}"></label>
+    <label class="wide">Internal notes<textarea name="internal_notes">${esc(c.internal_notes||'')}</textarea></label>
+  </div>
+  <input type="hidden" name="id" value="${c.id||''}">
+  <div class="notice">Changing Current Week changes what this cohort receives in the Hub. A live cohort only displays a week that is published and verified.</div>
+  <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveCohort">Save Cohort</button></div>`);
+}
+
+
+function contextDetails(){
+  const ctx=state.programmeContext;
+  if(!ctx)return null;
+  let cohort=null,label='',account=null;
+  if(ctx.type==='cohort'){
+    cohort=byId(state.cohorts,ctx.id);
+    label=cohort?.name||'Cohort';
+  }else if(ctx.type==='athlete'){
+    account=byId(state.athletes,ctx.id);
+    cohort=cohortFor(account?.cohort_id);
+    label=account?.full_name||account?.display_name||'Athlete';
+  }else if(ctx.type==='professional'){
+    account=byId(state.professionals,ctx.id);
+    cohort=cohortFor(account?.cohort_id);
+    label=[account?.first_name,account?.last_name].filter(Boolean).join(' ')||account?.email||'Professional';
+  }
+  if(!cohort)return null;
+  return {ctx,cohort,label,account};
+}
+
+function weekForCohort(cohort){
+  if(!cohort?.programme_id)return null;
+  const candidates=state.programmeWeeks.filter(w=>w.programme_id===cohort.programme_id&&w.week_number===cohort.current_week);
+  if(!candidates.length)return null;
+  if(cohort.tier){
+    const tier=state.programmeTiers.find(t=>t.programme_id===cohort.programme_id&&String(t.name||'').toLowerCase()===String(cohort.tier||'').toLowerCase());
+    if(tier){
+      const exact=candidates.find(w=>w.tier_id===tier.id);
+      if(exact)return exact;
+    }
+  }
+  return candidates.find(w=>!w.tier_id)||candidates[0];
+}
+
+function membersInCohort(cohortId){
+  return state.athletes.filter(a=>a.cohort_id===cohortId).length+state.professionals.filter(p=>p.cohort_id===cohortId).length;
+}
+
+function playlistIdFromUrl(url){
+  if(!url)return '';
+  try{
+    const u=new URL(url);
+    if(!/(^|\.)youtube\.com$/i.test(u.hostname))return '';
+    return u.searchParams.get('list')||'';
+  }catch{return '';}
+}
+
+function blocksForDay(dayId){
+  return state.sessionBlocks.filter(b=>b.training_day_id===dayId).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+}
+
+function prescriptionEditor(block){
+  const content=block.content||{};
+  const prescriptions=Array.isArray(content.prescriptions)?content.prescriptions:[];
+  if(prescriptions.length){
+    return `<div class="list">${prescriptions.map((p,i)=>`<div class="card" style="padding:12px">
+      <div class="formgrid">
+        <label>Exercise code<input data-prescription-field="exerciseCode" data-prescription-index="${i}" value="${esc(p.exerciseCode||'')}"></label>
+        <label>Dosage<input data-prescription-field="dosage" data-prescription-index="${i}" value="${esc(p.dosage||'')}"></label>
+        <label>Rest<input data-prescription-field="rest" data-prescription-index="${i}" value="${esc(p.rest||'')}"></label>
+        <label>Equipment<input data-prescription-field="equipment" data-prescription-index="${i}" value="${esc(p.equipment||'')}"></label>
+        <label class="wide">Cues<input data-prescription-field="cues" data-prescription-index="${i}" value="${esc(p.cues||'')}"></label>
+        <label class="wide">Alternative exercise code<input data-prescription-field="alternativeExerciseCode" data-prescription-index="${i}" value="${esc(p.alternativeExerciseCode||'')}"></label>
+      </div>
+    </div>`).join('')}</div>`;
+  }
+  const items=Array.isArray(content.items)?content.items:[];
+  return `<label class="wide">Workout prescription — one line per item<textarea id="blockItems" rows="8">${esc(items.join('\n'))}</textarea></label>`;
+}
+
+function blockEditor(block){
+  const content=block.content||{};
+  openModal(`<h2>Edit ${esc(block.title||'Workout Block')}</h2>
+  <p class="muted">Small current-week edits only. This updates the live programme block stored in Supabase.</p>
+  <div class="formgrid">
+    <label class="wide">Block title<input id="blockTitle" value="${esc(block.title||'')}"></label>
+    <label class="wide">Focus<input id="blockFocus" value="${esc(content.focus||'')}"></label>
+    <label class="wide">Requirement<input id="blockRequirement" value="${esc(content.requirement||'')}"></label>
+    <label class="wide">Why<input id="blockWhy" value="${esc(content.why||'')}"></label>
+    <label class="wide">Watch / coaching emphasis<input id="blockWatch" value="${esc(content.watch||'')}"></label>
+    ${prescriptionEditor(block)}
+    <label class="wide">Athlete note<textarea id="blockAthleteNote" rows="3">${esc(block.athlete_note||'')}</textarea></label>
+  </div>
+  <input type="hidden" id="editBlockId" value="${block.id}">
+  <div class="notice">The original JSON structure is preserved; only the fields shown above are changed.</div>
+  <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveWorkoutBlock">Save Workout Update</button></div>`);
+}
+
+function dayEditor(day){
+  openModal(`<h2>Edit ${esc(day.day_key||day.title||'Training Day')}</h2>
+  <div class="formgrid">
+    <label class="wide">Day title<input id="dayTitle" value="${esc(day.title||'')}"></label>
+    <label>Intensity<input id="dayIntensity" value="${esc(day.intensity||'')}"></label>
+    <label>Duration<input id="dayDuration" value="${esc(day.duration||'')}"></label>
+    <label class="wide">Objective<textarea id="dayObjective" rows="3">${esc(day.objective||'')}</textarea></label>
+    <label class="wide">YouTube playlist URL<input id="dayPlaylistUrl" value="${esc(day.playlist_url||'')}" placeholder="https://www.youtube.com/playlist?list=..."></label>
+  </div>
+  <input type="hidden" id="editDayId" value="${day.id}">
+  <div class="notice">Playlist changes appear through the Hub's existing Watch / Do rendering when the athlete reloads the programme.</div>
+  <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveTrainingDay">Save Day</button></div>`);
+}
+
+function previewDay(day){
+  const blocks=blocksForDay(day.id);
+  openModal(`<h2>Athlete Preview — ${esc(day.title||day.day_key)}</h2>
+  <p class="muted">${esc(day.objective||'')}</p>
+  <div class="row"><span class="pill">${esc(day.intensity||'')}</span><span class="pill">${esc(day.duration||'')}</span>${day.playlist_url?`<span class="pill">Playlist attached</span>`:''}</div>
+  <div class="list" style="margin-top:14px">${blocks.map(b=>{
+    const c=b.content||{};
+    const prescriptions=Array.isArray(c.prescriptions)?c.prescriptions.map(p=>`${esc(p.exerciseCode||'Exercise')} — ${esc(p.dosage||'')} ${p.rest?'· Rest '+esc(p.rest):''}`).join('<br>'):'';
+    const items=Array.isArray(c.items)?c.items.map(x=>esc(x)).join('<br>'):'';
+    return `<div class="card"><strong>${esc(b.title||b.block_type||'Block')}</strong><p>${esc(c.focus||'')}</p><p>${prescriptions||items||'No prescription text.'}</p>${b.athlete_note?`<p><strong>Note:</strong> ${esc(b.athlete_note)}</p>`:''}</div>`;
+  }).join('')}</div>
+  <div class="row" style="margin-top:18px"><button value="cancel" class="btn primary">Close Preview</button></div>`);
+}
+
+function renderProgrammeEditor(m){
+  const d=contextDetails();
+  if(!d){
+    state.page='dashboard';
+    render();
+    return;
+  }
+  const {cohort,label}=d;
+  const week=weekForCohort(cohort);
+  const programme=byId(state.programmes,cohort.programme_id);
+  const memberCount=membersInCohort(cohort.id);
+  if(!week){
+    m.innerHTML=`<button class="btn ghost" data-page="${d.ctx.type==='cohort'?'cohorts':d.ctx.type==='professional'?'professionals':'athletes'}">← Back</button>
+    <div class="card" style="margin-top:14px"><h2>${esc(label)}</h2><p class="muted">No programme week matching Week ${cohort.current_week||1} is available for this cohort.</p></div>`;
+    return;
+  }
+  const days=state.trainingDays.filter(td=>td.programme_week_id===week.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const published=!!(week.published_at&&week.verification_status==='verified'&&(week.status==='live'||week.status==='completed'));
+  const scopeText=memberCount===1
+    ?'This cohort currently has 1 account. Changes to the base week affect that account.'
+    :`This cohort currently has ${memberCount} account(s). Changes made here affect everyone assigned to this cohort/programme week.`;
+  m.innerHTML=`${loadWarning()}
+  <div class="toolbar"><div>
+    <button class="btn ghost" data-page="${d.ctx.type==='cohort'?'cohorts':d.ctx.type==='professional'?'professionals':'athletes'}">← Back</button>
+    <h1 style="margin-top:14px">${esc(label)} — Current Programme</h1>
+    <p class="muted">${esc(programme?.name||'Programme')} · Week ${week.week_number} · ${esc(week.phase||cohort.current_phase||'Phase not set')}</p>
+  </div></div>
+  <div class="notice">${esc(scopeText)} ${published?'This week is currently published and verified, so saved edits can appear in the Hub on reload.':'This week is not currently published/verified, so the Hub will not expose it yet.'}</div>
+  <div class="list">${days.map(day=>`<div class="card">
+    <div class="toolbar"><div><h3>${esc(day.day_key)} — ${esc(day.title)}</h3>
+    <p class="muted">${esc(day.objective||'')} · ${esc(day.intensity||'')} · ${esc(day.duration||'')}</p>
+    ${day.playlist_url?`<p><span class="pill">YouTube playlist attached</span></p>`:'<p class="muted">No playlist attached.</p>'}
+    </div><div class="row"><button class="btn ghost" data-preview-day="${day.id}">Preview</button><button class="btn ghost" data-edit-day="${day.id}">Edit Day / Video</button></div></div>
+    <div class="list">${blocksForDay(day.id).map(block=>`<div class="item"><div><strong>${esc(block.title||block.block_type||'Workout block')}</strong>
+      <p>${esc(block.content?.focus||'')}${Array.isArray(block.content?.prescriptions)?' · '+block.content.prescriptions.length+' exercise(s)':Array.isArray(block.content?.items)?' · '+block.content.items.length+' item(s)':''}</p></div>
+      <button class="btn ghost" data-edit-block="${block.id}">Edit Workout</button></div>`).join('')||'<div class="muted">No workout blocks.</div>'}
+    </div>
+  </div>`).join('')||'<div class="card muted">No training days in this week.</div>'}</div>`;
+}
+
+async function saveTrainingDay(){
+  const id=document.getElementById('editDayId').value;
+  const url=String(document.getElementById('dayPlaylistUrl').value||'').trim();
+  let playlistId='';
+  if(url){
+    playlistId=playlistIdFromUrl(url);
+    if(!playlistId){alert('Use a valid YouTube playlist URL containing a list= value, or leave the field blank.');return;}
+  }
+  const update={
+    title:String(document.getElementById('dayTitle').value||'').trim(),
+    intensity:String(document.getElementById('dayIntensity').value||'').trim(),
+    duration:String(document.getElementById('dayDuration').value||'').trim(),
+    objective:String(document.getElementById('dayObjective').value||'').trim(),
+    playlist_url:url||null,
+    playlist_id:playlistId||null
+  };
+  const ok=confirm('Save this training-day update to Supabase? If the week is live, athletes in this cohort can see the change when they reload the Hub.');
+  if(!ok)return;
+  const {error}=await sb.from('training_days').update(update).eq('id',id);
+  if(error){alert(error.message);return;}
+  document.getElementById('modal').close();
+  await load();
+}
+
+async function saveWorkoutBlock(){
+  const id=document.getElementById('editBlockId').value;
+  const block=byId(state.sessionBlocks,id);
+  if(!block)return;
+  const content={...(block.content||{})};
+  content.focus=String(document.getElementById('blockFocus').value||'').trim();
+  content.requirement=String(document.getElementById('blockRequirement').value||'').trim();
+  const why=String(document.getElementById('blockWhy').value||'').trim();
+  const watch=String(document.getElementById('blockWatch').value||'').trim();
+  if(why)content.why=why;else delete content.why;
+  if(watch)content.watch=watch;else delete content.watch;
+
+  const prescriptionInputs=[...document.querySelectorAll('[data-prescription-field]')];
+  if(prescriptionInputs.length){
+    const prescriptions=Array.isArray(content.prescriptions)?content.prescriptions.map(p=>({...p})):[];
+    for(const input of prescriptionInputs){
+      const i=+input.dataset.prescriptionIndex;
+      const field=input.dataset.prescriptionField;
+      if(!prescriptions[i])prescriptions[i]={};
+      prescriptions[i][field]=String(input.value||'').trim();
+    }
+    content.prescriptions=prescriptions;
+    if(Array.isArray(content.exerciseCodes)){
+      content.exerciseCodes=prescriptions.map(p=>p.exerciseCode).filter(Boolean);
+    }
+  }else{
+    const itemsBox=document.getElementById('blockItems');
+    if(itemsBox)content.items=String(itemsBox.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  }
+
+  const update={
+    title:String(document.getElementById('blockTitle').value||'').trim(),
+    athlete_note:String(document.getElementById('blockAthleteNote').value||'').trim(),
+    content
+  };
+  const ok=confirm('Save this workout tweak to Supabase? This edits the current programme block and can appear in the Hub on reload.');
+  if(!ok)return;
+  const {error}=await sb.from('session_blocks').update(update).eq('id',id);
+  if(error){alert(error.message);return;}
+  document.getElementById('modal').close();
+  await load();
+}
+
+function substitutionForm(a){
+  const current=Array.isArray(a.exercise_substitutions)?a.exercise_substitutions:[];
+  openModal(`<h2>Individual Exercise Substitutions</h2>
+  <p class="muted">For structured programmes only. Each substitution replaces an exercise code for this athlete without changing the shared programme.</p>
+  <label class="wide">One substitution per line: FROM → TO → optional note
+  <textarea id="substitutionsText" rows="8">${esc(current.map(x=>`${x.fromExerciseCode} -> ${x.toExerciseCode}${x.note?' -> '+x.note:''}`).join('\n'))}</textarea></label>
+  <input type="hidden" id="subAthleteId" value="${a.id}">
+  <div class="notice">Example: STR01 -> STR03 -> Use this option this week. This is applied by the existing account Hub backend.</div>
+  <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveSubstitutions">Save Substitutions</button></div>`);
+}
+
+async function saveSubstitutions(){
+  const id=document.getElementById('subAthleteId').value;
+  const lines=String(document.getElementById('substitutionsText').value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  if(lines.length>20){alert('Keep substitutions to 20 or fewer.');return;}
+  const code=/^[A-Za-z0-9_-]{2,30}$/;
+  const rows=[];
+  for(const line of lines){
+    const parts=line.split(/\s*->\s*/);
+    const from=(parts[0]||'').trim(),to=(parts[1]||'').trim(),note=parts.slice(2).join(' -> ').trim().slice(0,500);
+    if(!code.test(from)||!code.test(to)||from===to){alert('Each line must use valid different exercise codes: FROM -> TO -> optional note');return;}
+    rows.push({fromExerciseCode:from,toExerciseCode:to,note});
+  }
+  const {error}=await sb.from('athletes').update({exercise_substitutions:rows}).eq('id',id);
+  if(error){alert(error.message);return;}
+  document.getElementById('modal').close();
+  await load();
+}
+
+function renderStaff(m){
+  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Staff</h1><p class="muted">Named staff profiles. Shared Staff/Coach Hub access remains cohort-code based.</p></div></div>
+  <div class="list">${state.staff.map(x=>`<div class="item"><div><strong>${esc(x.full_name||x.display_name||'Unnamed staff')}</strong><p>${esc(x.role_title||'Coach / Staff')}</p></div><span class="pill">${esc(x.access_status||'active')}</span></div>`).join('')||'<div class="card muted">No staff profiles yet.</div>'}</div>`;
+}
+
+function renderProgrammes(m){
+  const weekMap={};
+  for(const w of state.programmeWeeks)(weekMap[w.programme_id]||(weekMap[w.programme_id]=[])).push(w);
+  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Programmes</h1><p class="muted">Read-only programme overview. Programme content is not edited from this control-room pass.</p></div></div>
+  <div class="list">${state.programmes.map(p=>{
+    const weeks=(weekMap[p.id]||[]).sort((a,b)=>a.week_number-b.week_number);
+    const published=weeks.filter(w=>w.published_at&&w.verification_status==='verified'&&(w.status==='live'||w.status==='completed')).length;
+    return `<div class="item"><div><strong>${esc(p.name)}</strong><p>${p.duration_weeks||'—'} weeks · ${esc(p.sport||'')} · ${published} published/verified week${published===1?'':'s'}</p></div><span class="pill">${esc(p.status||'active')}</span></div>`;
+  }).join('')||'<div class="card muted">No programmes yet.</div>'}</div>`;
+}
+
+function renderBlocks(m){
+  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Saved Blocks</h1><p class="muted">Reusable programme building blocks. Read-only in this alignment pass.</p></div></div>
+  <div class="list">${state.blocks.map(x=>`<div class="item"><div><strong>${esc(x.name)}</strong><p>${esc(x.description||'Reusable programme block')}</p></div><span class="pill">${x.active?'Active':'Inactive'}</span></div>`).join('')||'<div class="card muted">No saved blocks yet.</div>'}</div>`;
+}
+
+function renderLibrary(m){
+  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Exercise Library</h1><p class="muted">Permanent codes. Update the exercise reference here without changing existing session structure.</p></div><button class="btn primary" data-add="exercise">Add Exercise</button></div>
+  <input class="search" id="search" placeholder="Search code, exercise or category…">
+  <div class="list" id="exerciseList">${exerciseRows(state.exercises)}</div>`;
+}
+function exerciseRows(rows){
+  return rows.map(e=>`<div class="item" data-search="${esc(((e.code||'')+' '+(e.name||'')+' '+(e.category_slug||'')).toLowerCase())}">
+  <div><strong><span class="code">${esc(e.code)}</span> — ${esc(e.name)}</strong><p>${esc(e.purpose||e.category_slug||'')}</p></div><button class="btn ghost" data-edit-exercise="${e.id}">Edit</button></div>`).join('')||'<div class="card muted">No exercises yet.</div>';
+}
+function exerciseForm(e={}){
+  openModal(`<h2>${e.id?'Edit':'Add'} Exercise</h2><div class="formgrid">
+  <label>Code<input name="code" required value="${esc(e.code||'')}"></label>
+  <label>Name<input name="name" required value="${esc(e.name||'')}"></label>
+  <label>Category / prefix<input name="category_slug" value="${esc(e.category_slug||'')}"></label>
+  <label>Video ID<input name="video_id" value="${esc(e.video_id||'')}"></label>
+  <label class="wide">Purpose<input name="purpose" value="${esc(e.purpose||'')}"></label>
+  <label class="wide">Coaching cues<textarea name="coaching_cues">${esc(e.coaching_cues||'')}</textarea></label>
+  <label class="wide">Default dosage<input name="default_dosage" value="${esc(e.default_dosage||'')}"></label>
+  </div><input type="hidden" name="id" value="${e.id||''}">
+  <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveExercise">Save Exercise</button></div>`);
+}
+
+function feedbackWho(f){
+  const a=byId(state.athletes,f.athlete_id);
+  if(a)return a.full_name||a.display_name||'Athlete';
+  const s=byId(state.staff,f.staff_id);
+  if(s)return s.full_name||s.display_name||'Staff';
+  return cohortName(f.cohort_id);
+}
+function feedbackSummary(f){
+  const p=f.payload||{};
+  const fields=[
+    ['Training feel',p.trainingFeel],['Completion',p.completion],['Energy',p.energy],['Pain',p.pain],
+    ['Improvements',Array.isArray(p.improvements)?p.improvements.join(', '):''],
+    ['Session feel',p.sessionsFeel],['Observations',Array.isArray(p.observations)?p.observations.join(', '):''],
+    ['Enjoyment',p.enjoyment],['Schedule changes',p.scheduleChanges],['Programme change',p.programmeChange],
+    ['Load',p.load],['Movement quality',p.movementQuality],['Engagement',p.engagement],['Modified',p.modified],
+    ['Workload issue',p.workloadIssue],['Attention',p.attention],['Session',p.session],['Reason',p.reason],['Note',p.note]
+  ].filter(x=>x[1]!==undefined&&x[1]!==null&&String(x[1]).trim()!=='');
+  return fields.map(([k,v])=>`<span><strong>${esc(k)}:</strong> ${esc(v)}</span>`).join(' · ');
+}
+function renderFeedback(m){
+  const rows=[...state.feedback].sort((a,b)=>{
+    const ar=feedbackNeedsReview(a)?0:1,br=feedbackNeedsReview(b)?0:1;
+    return ar-br||new Date(b.created_at)-new Date(a.created_at);
+  });
+  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Feedback</h1><p class="muted">${rows.filter(feedbackNeedsReview).length} item(s) need review. Original athlete/parent/coach answers are preserved.</p></div></div>
+  <div class="list">${rows.map(f=>`<div class="item"><div>
+    <strong>${esc(feedbackWho(f))} · ${esc(f.feedback_type)} · Week ${f.week_number||'-'}</strong>
+    <p>${feedbackSummary(f)||'No response details.'}</p>
+    <p>Submitted ${esc(fmtDate(f.created_at))}${f.reviewed_at?' · Reviewed '+esc(fmtDate(f.reviewed_at)):''}</p>
+  </div><div class="row"><span class="pill">${esc(feedbackLabel(f))}</span>${feedbackNeedsReview(f)?`<button class="btn ghost" data-review="${f.id}">Mark Reviewed</button>`:''}</div></div>`).join('')||'<div class="card muted">No feedback yet.</div>'}</div>`;
+}
+
+function renderAccess(m){
+  const codes=[...state.accessCodes].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  m.innerHTML=`${loadWarning()}<h1>Access Management</h1><p class="muted">School/team athlete and staff access remains cohort-based. Private Athlete, Parent and Professional users continue to use personal accounts.</p>
+  <div class="grid">
+    <button class="btn primary" data-code-type="cohort">New School / Team Athlete Code</button>
+    <button class="btn ghost" data-code-type="staff">New Staff / Coach Code</button>
+  </div>
+  <div class="notice">Readable access codes are never stored in Supabase. Only the SHA-256 hash is saved. ${state.sessions.length} Hub session(s) are currently stored.</div>
+  <div class="list">${codes.map(c=>`<div class="item"><div><strong>${esc(c.label||'Shared access code')}</strong>
+    <p>${c.code_type==='staff'?'Staff / Coach':'School / Team Athlete'} · ${esc(cohortName(c.cohort_id))} · Expires ${c.expires_at?esc(fmtDate(c.expires_at)):'Never'} · Last used ${c.last_used_at?esc(fmtDate(c.last_used_at)):'Never'}</p>
+    </div><div class="row"><span class="pill">${esc(c.status)}</span>
+    ${c.status==='active'?`<button class="btn ghost" data-code-id="${c.id}" data-code-action="pause">Pause</button>`:''}
+    ${c.status==='paused'?`<button class="btn ghost" data-code-id="${c.id}" data-code-action="activate">Activate</button>`:''}
+    ${c.status!=='archived'?`<button class="btn ghost" data-code-id="${c.id}" data-code-action="archive">Archive</button>`:''}
+    </div></div>`).join('')||'<div class="card muted">No access codes yet.</div>'}</div>`;
+}
+
+function codeForm(type){
+  const rows=state.cohorts.filter(c=>c.status==='live');
+  if(!rows.length){alert('Create or activate a cohort first, then come back here.');return;}
+  const label=type==='staff'?'Staff / Coach':'School / Team Athlete';
+  const options=rows.map(x=>`<option value="${esc(x.id)}">${esc(x.name)} — Week ${x.current_week||1}</option>`).join('');
+  openModal(`<h2>Create ${label} Access Code</h2><p class="muted">Choose the cohort and create a code of at least 12 characters. The readable code is shown only when you create it.</p>
+  <div class="formgrid">
+    <label class="wide">Cohort<select name="target_id" required>${options}</select></label>
+    <label class="wide">Label<input name="label" required placeholder="Example: Saints Athlete Term 3"></label>
+    <label class="wide">Access code<input name="raw_code" required minlength="12" maxlength="128" autocomplete="off" placeholder="Example: SAINTS-ATHLETE-2026"></label>
+    <label class="wide">Expiry (optional)<input name="expires_at" type="datetime-local"></label>
+  </div>
+  <input type="hidden" name="code_type" value="${type}">
+  <div class="notice">The Hub normalizes codes to lowercase before hashing. This form uses the same rule.</div>
+  <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveAccessCode">Create Code</button></div>`);
+}
+
 async function saveAccessCode(){
-  const f=new FormData(document.getElementById('modalForm')),type=f.get('code_type'),target=f.get('target_id'),raw=String(f.get('raw_code')||'').trim();
-  if(!target||!raw){alert('Choose a person/cohort and enter an access code.');return;}
-  const bytes=new TextEncoder().encode(raw.toLowerCase()),digest=await crypto.subtle.digest('SHA-256',bytes),hash=[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
-  const row={code_type:type,code_hash:hash,status:'active'};
-  if(type==='cohort')row.cohort_id=target;if(type==='staff')row.staff_id=target;if(type==='private_athlete')row.athlete_id=target;
+  const f=new FormData(document.getElementById('modalForm'));
+  const type=String(f.get('code_type')||'');
+  const target=String(f.get('target_id')||'');
+  const raw=String(f.get('raw_code')||'').trim();
+  const label=String(f.get('label')||'').trim();
+  const expiry=String(f.get('expires_at')||'').trim();
+  if(!target||!label||raw.length<12||raw.length>128){alert('Choose a cohort, add a label, and use a code between 12 and 128 characters.');return;}
+  const bytes=new TextEncoder().encode(raw.toLowerCase());
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  const hash=[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  const row={code_type:type,code_hash:hash,status:'active',cohort_id:target,label};
+  if(expiry)row.expires_at=new Date(expiry).toISOString();
   const {error}=await sb.from('access_codes').insert(row);
   if(error){alert(error.message);return;}
   document.getElementById('modal').close();
-  alert('Access code created ✅\n\nCode: '+raw+'\n\nSave/share this exact code with the right athlete or staff member.');
+  await load();
+  alert('Access code created ✅\n\nCode: '+raw+'\n\nThis readable code is not stored in Supabase. Save/share it securely.');
 }
-document.addEventListener('click',async e=>{const p=e.target.closest('[data-page]');if(p){state.page=p.dataset.page;render();return}const add=e.target.closest('[data-add]');if(add){if(add.dataset.add==='athlete')athleteForm();else if(add.dataset.add==='cohort')cohortForm();else if(add.dataset.add==='exercise')exerciseForm();else alert('The database supports this record type; UI editor can be added next.');return}const ae=e.target.closest('[data-edit-athlete]');if(ae)return athleteForm(state.athletes.find(x=>x.id===ae.dataset.editAthlete)||{});const ce=e.target.closest('[data-edit-cohort]');if(ce)return cohortForm(state.cohorts.find(x=>x.id===ce.dataset.editCohort)||{});const ee=e.target.closest('[data-edit-exercise]');if(ee)return exerciseForm(state.exercises.find(x=>x.id===ee.dataset.editExercise)||{});const cr=e.target.closest('[data-code-type]');if(cr)return codeForm(cr.dataset.codeType);if(e.target.id==='saveAccessCode')return saveAccessCode();const rv=e.target.closest('[data-review]');if(rv){await sb.from('feedback').update({status:'reviewed',reviewed_at:new Date().toISOString()}).eq('id',rv.dataset.review);return load()}if(e.target.id==='logout'){await sb.auth.signOut();location.reload()}if(e.target.id==='passwordReset'){const u=(await sb.auth.getUser()).data.user; if(u?.email){await sb.auth.resetPasswordForEmail(u.email);alert('Reset email sent.')}}if(e.target.id==='saveAthlete'){const f=new FormData(document.getElementById('modalForm')),id=f.get('id');return save('athletes',{full_name:f.get('full_name'),display_name:f.get('display_name'),athlete_type:f.get('athlete_type'),form_tier:f.get('form_tier'),events:String(f.get('events')||'').split(',').map(x=>x.trim()).filter(Boolean),current_week:+f.get('current_week')||1,current_phase:f.get('current_phase'),access_status:f.get('access_status'),admin_notes:f.get('admin_notes')},id)}if(e.target.id==='saveCohort'){const f=new FormData(document.getElementById('modalForm')),id=f.get('id');return save('cohorts',{name:f.get('name'),current_week:+f.get('current_week')||1,current_phase:f.get('current_phase'),status:f.get('status'),tier:f.get('tier'),internal_notes:f.get('internal_notes')},id)}if(e.target.id==='saveExercise'){const f=new FormData(document.getElementById('modalForm')),id=f.get('id'),vid=f.get('video_id');return save('exercises',{code:String(f.get('code')).toUpperCase(),name:f.get('name'),category_slug:f.get('category_slug'),video_id:vid,video_url:vid?'https://www.youtube.com/shorts/'+vid:'',purpose:f.get('purpose'),coaching_cues:f.get('coaching_cues'),default_dosage:f.get('default_dosage'),active:true},id)}});
-document.addEventListener('input',e=>{if(e.target.id==='search'){const q=e.target.value.toLowerCase();document.querySelectorAll('[data-search]').forEach(x=>x.style.display=x.dataset.search.includes(q)?'grid':'none')}});
-document.getElementById('loginForm').addEventListener('submit',async e=>{e.preventDefault();if(!configured){document.getElementById('setupNotice').classList.remove('hidden');return}const {error}=await sb.auth.signInWithPassword({email:email.value,password:password.value});if(error)loginErr.textContent=error.message;else init()});
-async function init(){if(!configured){document.getElementById('setupNotice').classList.remove('hidden');return}const {data:{session}}=await sb.auth.getSession();if(!session)return;document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');await load()}
+
+function renderSettings(m){
+  m.innerHTML=`${loadWarning()}<h1>Settings</h1><div class="card"><h3>Admin account</h3>
+  <p class="muted">Signed in as ${esc(state.admin?.display_name||'Du Airlines Admin')}. This Control Room opens only for users present in <span class="code">admin_profiles</span>.</p>
+  <button class="btn ghost" id="passwordReset">Send password reset email</button></div>`;
+}
+
+function openModal(html){
+  const d=document.getElementById('modal'),f=document.getElementById('modalForm');
+  f.innerHTML=html;
+  d.showModal();
+}
+
+async function save(table,obj,id){
+  const q=id?sb.from(table).update(obj).eq('id',id):sb.from(table).insert(obj);
+  const {error}=await q;
+  if(error){alert(error.message);return false;}
+  document.getElementById('modal').close();
+  await load();
+  return true;
+}
+
+async function changeAccountAccess(kind,id,action){
+  const table=kind==='professional'?'professional_members':'athletes';
+  const row=kind==='professional'?byId(state.professionals,id):byId(state.athletes,id);
+  if(!row)return;
+  let update={};
+  if(action==='activate'){
+    if(!row.cohort_id){alert('Assign a cohort before activating access.');return;}
+    update={access_status:'active',access_reason:'complimentary',payment_status:'not_required',paid:false};
+  }else if(action==='pause'){
+    update={access_status:'paused'};
+  }else if(action==='resume'){
+    if(!row.cohort_id||!row.access_reason||!row.payment_status){alert('This record is missing its entitlement details. Use Activate Complimentary instead of forcing access.');return;}
+    update={access_status:'active'};
+  }else return;
+  const {error}=await sb.from(table).update(update).eq('id',id);
+  if(error){alert(error.message);return;}
+  await load();
+}
+
+async function changeCodeStatus(id,action){
+  const status=action==='activate'?'active':action==='pause'?'paused':action==='archive'?'archived':'';
+  if(!status)return;
+  const {error}=await sb.from('access_codes').update({status}).eq('id',id);
+  if(error){alert(error.message);return;}
+  await load();
+}
+
+function publishedWeekReady(programmeId,weekNumber){
+  return state.programmeWeeks.some(w=>w.programme_id===programmeId&&w.week_number===weekNumber&&w.published_at&&w.verification_status==='verified'&&(w.status==='live'||w.status==='completed'));
+}
+
+document.addEventListener('click',async e=>{
+  const p=e.target.closest('[data-page]');
+  if(p){state.page=p.dataset.page;render();return;}
+
+  const add=e.target.closest('[data-add]');
+  if(add){
+    if(add.dataset.add==='cohort')cohortForm();
+    else if(add.dataset.add==='exercise')exerciseForm();
+    return;
+  }
+
+  const pc=e.target.closest('[data-programme-context]');
+  if(pc){
+    state.programmeContext={type:pc.dataset.programmeContext,id:pc.dataset.programmeId};
+    state.page='programme-editor';
+    render();
+    return;
+  }
+
+  const pd=e.target.closest('[data-preview-day]');
+  if(pd){
+    const day=byId(state.trainingDays,pd.dataset.previewDay);
+    if(day)return previewDay(day);
+  }
+
+  const ed=e.target.closest('[data-edit-day]');
+  if(ed){
+    const day=byId(state.trainingDays,ed.dataset.editDay);
+    if(day)return dayEditor(day);
+  }
+
+  const eb=e.target.closest('[data-edit-block]');
+  if(eb){
+    const block=byId(state.sessionBlocks,eb.dataset.editBlock);
+    if(block)return blockEditor(block);
+  }
+
+  const sub=e.target.closest('[data-substitutions]');
+  if(sub){
+    const athlete=byId(state.athletes,sub.dataset.substitutions);
+    if(athlete)return substitutionForm(athlete);
+  }
+
+    const ae=e.target.closest('[data-edit-athlete]');
+  if(ae)return athleteForm(byId(state.athletes,ae.dataset.editAthlete)||{});
+
+  const pe=e.target.closest('[data-edit-professional]');
+  if(pe)return professionalForm(byId(state.professionals,pe.dataset.editProfessional)||{});
+
+  const ce=e.target.closest('[data-edit-cohort]');
+  if(ce)return cohortForm(byId(state.cohorts,ce.dataset.editCohort)||{});
+
+  const ee=e.target.closest('[data-edit-exercise]');
+  if(ee)return exerciseForm(byId(state.exercises,ee.dataset.editExercise)||{});
+
+  const access=e.target.closest('[data-access-action]');
+  if(access)return changeAccountAccess(access.dataset.accessKind,access.dataset.accessId,access.dataset.accessAction);
+
+  const cr=e.target.closest('[data-code-type]');
+  if(cr)return codeForm(cr.dataset.codeType);
+
+  const cs=e.target.closest('[data-code-action]');
+  if(cs)return changeCodeStatus(cs.dataset.codeId,cs.dataset.codeAction);
+
+  if(e.target.id==='saveAccessCode')return saveAccessCode();
+  if(e.target.id==='saveTrainingDay')return saveTrainingDay();
+  if(e.target.id==='saveWorkoutBlock')return saveWorkoutBlock();
+  if(e.target.id==='saveSubstitutions')return saveSubstitutions();
+
+  const rv=e.target.closest('[data-review]');
+  if(rv){
+    const {error}=await sb.from('feedback').update({reviewed_at:new Date().toISOString()}).eq('id',rv.dataset.review);
+    if(error)alert(error.message);else await load();
+    return;
+  }
+
+  if(e.target.id==='logout'){await sb.auth.signOut();location.reload();return;}
+
+  if(e.target.id==='passwordReset'){
+    const u=(await sb.auth.getUser()).data.user;
+    if(u?.email){await sb.auth.resetPasswordForEmail(u.email);alert('Reset email sent.');}
+    return;
+  }
+
+  if(e.target.id==='saveAthlete'){
+    const f=new FormData(document.getElementById('modalForm')),id=f.get('id');
+    return save('athletes',{
+      full_name:String(f.get('full_name')||'').trim(),
+      display_name:String(f.get('display_name')||'').trim(),
+      cohort_id:f.get('cohort_id')||null,
+      coach_note:String(f.get('coach_note')||'').trim()
+    },id);
+  }
+
+  if(e.target.id==='saveProfessional'){
+    const f=new FormData(document.getElementById('modalForm')),id=f.get('id');
+    return save('professional_members',{
+      first_name:String(f.get('first_name')||'').trim(),
+      last_name:String(f.get('last_name')||'').trim(),
+      cohort_id:f.get('cohort_id')||null,
+      coach_note:String(f.get('coach_note')||'').trim()
+    },id);
+  }
+
+  if(e.target.id==='saveCohort'){
+    const f=new FormData(document.getElementById('modalForm')),id=f.get('id');
+    const programmeId=String(f.get('programme_id')||'');
+    const week=+f.get('current_week')||1;
+    const status=String(f.get('status')||'draft');
+    if(status==='live'&&!publishedWeekReady(programmeId,week)){
+      const ok=confirm(`Week ${week} is not currently published and verified for this programme. Saving a live cohort in this state will make the Hub show that the programme is being prepared. Continue?`);
+      if(!ok)return;
+    }
+    return save('cohorts',{
+      name:String(f.get('name')||'').trim(),
+      programme_id:programmeId||null,
+      current_week:week,
+      current_phase:String(f.get('current_phase')||'').trim(),
+      expected_sessions_per_week:Math.min(7,Math.max(1,+f.get('expected_sessions_per_week')||3)),
+      status,
+      tier:String(f.get('tier')||'').trim()||null,
+      internal_notes:String(f.get('internal_notes')||'').trim()
+    },id);
+  }
+
+  if(e.target.id==='saveExercise'){
+    const f=new FormData(document.getElementById('modalForm')),id=f.get('id'),vid=String(f.get('video_id')||'').trim();
+    return save('exercises',{
+      code:String(f.get('code')||'').trim().toUpperCase(),
+      name:String(f.get('name')||'').trim(),
+      category_slug:String(f.get('category_slug')||'').trim(),
+      video_id:vid,
+      video_url:vid?'https://www.youtube.com/shorts/'+vid:'',
+      purpose:String(f.get('purpose')||'').trim(),
+      coaching_cues:String(f.get('coaching_cues')||'').trim(),
+      default_dosage:String(f.get('default_dosage')||'').trim(),
+      active:true
+    },id);
+  }
+});
+
+document.addEventListener('input',e=>{
+  if(e.target.id==='search'){
+    const q=e.target.value.toLowerCase();
+    document.querySelectorAll('[data-search]').forEach(x=>x.style.display=x.dataset.search.includes(q)?'grid':'none');
+  }
+});
+
+async function authorisedAdmin(){
+  const {data:{user},error:userError}=await sb.auth.getUser();
+  if(userError||!user)return null;
+  const {data,error}=await sb.from('admin_profiles').select('user_id,display_name').eq('user_id',user.id).maybeSingle();
+  if(error||!data)return null;
+  return data;
+}
+
+document.getElementById('loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!configured){document.getElementById('setupNotice').classList.remove('hidden');return;}
+  const emailValue=document.getElementById('email').value;
+  const passwordValue=document.getElementById('password').value;
+  const loginErr=document.getElementById('loginErr');
+  loginErr.textContent='';
+  const {error}=await sb.auth.signInWithPassword({email:emailValue,password:passwordValue});
+  if(error){loginErr.textContent=error.message;return;}
+  const admin=await authorisedAdmin();
+  if(!admin){
+    await sb.auth.signOut();
+    loginErr.textContent='This account is not authorised for the Du Airlines Control Room.';
+    return;
+  }
+  await init();
+});
+
+async function init(){
+  if(!configured){document.getElementById('setupNotice').classList.remove('hidden');return;}
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)return;
+  const admin=await authorisedAdmin();
+  if(!admin){
+    await sb.auth.signOut();
+    document.getElementById('loginErr').textContent='This account is not authorised for the Du Airlines Control Room.';
+    return;
+  }
+  state.admin=admin;
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  await load();
+}
 init();
+
 </script></body></html>
