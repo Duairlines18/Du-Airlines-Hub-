@@ -551,14 +551,18 @@ function exerciseForm(e={}){
 function feedbackWho(f){
   const a=byId(state.athletes,f.athlete_id);
   if(a)return a.full_name||a.display_name||'Athlete';
+  const professional=byId(state.professionals,f.professional_member_id);
+  if(professional){const name=[professional.first_name,professional.last_name].filter(Boolean).join(' ').trim();return name||professional.email||'Professional Member';}
   const s=byId(state.staff,f.staff_id);
   if(s)return s.full_name||s.display_name||'Staff';
+  const submittedBy=String(f.payload?.submitterName||'').trim();
+  if(submittedBy)return submittedBy;
   return cohortName(f.cohort_id);
 }
 function feedbackSummary(f){
   const p=f.payload||{};
   const fields=[
-    ['Training feel',p.trainingFeel],['Completion',p.completion],['Energy',p.energy],['Pain',p.pain],
+    ['Submitted by',p.submitterName],['Training feel',p.trainingFeel],['Completion',p.completion],['Energy',p.energy],['Pain',p.pain],
     ['Improvements',Array.isArray(p.improvements)?p.improvements.join(', '):''],
     ['Session feel',p.sessionsFeel],['Observations',Array.isArray(p.observations)?p.observations.join(', '):''],
     ['Enjoyment',p.enjoyment],['Schedule changes',p.scheduleChanges],['Programme change',p.programmeChange],
@@ -572,7 +576,7 @@ function renderFeedback(m){
     const ar=feedbackNeedsReview(a)?0:1,br=feedbackNeedsReview(b)?0:1;
     return ar-br||new Date(b.created_at)-new Date(a.created_at);
   });
-  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Feedback</h1><p class="muted">${rows.filter(feedbackNeedsReview).length} item(s) need review. Original athlete/parent/coach answers are preserved.</p></div></div>
+  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Feedback</h1><p class="muted">${rows.filter(feedbackNeedsReview).length} item(s) need review. Original athlete/parent/professional/coach answers are preserved.</p></div></div>
   <div class="list">${rows.map(f=>`<div class="item"><div>
     <strong>${esc(feedbackWho(f))} · ${esc(f.feedback_type)} · Week ${f.week_number||'-'}</strong>
     <p>${feedbackSummary(f)||'No response details.'}</p>
