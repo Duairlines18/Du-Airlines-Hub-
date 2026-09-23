@@ -7,9 +7,11 @@ window.DU_AIRLINES_ENV = {
 };
 </script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{--ink:#091a12;--green:#0f271c;--panel:#143222;--lift:#1a3d2a;--gold:#c7a25a;--gold2:#dcc38c;--cream:#f3efe4;--sage:#94a89a;--hair:rgba(199,162,90,.2);font-family:Inter,system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--green);color:var(--cream)}button,input,select,textarea{font:inherit}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;padding:24px}.card{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:22px}.login .card{width:min(440px,100%)}.brand{font-weight:800;letter-spacing:.16em}.brand span{color:var(--gold)}h1,h2,h3{margin:0 0 10px}.muted{color:var(--sage)}label{display:block;font-size:12px;color:var(--sage);margin:14px 0 6px}input,select,textarea{width:100%;background:var(--ink);color:var(--cream);border:1px solid var(--hair);border-radius:10px;padding:12px}.btn{border:0;border-radius:10px;padding:12px 15px;cursor:pointer;font-weight:700}.primary{background:var(--gold);color:var(--ink)}.ghost{background:transparent;color:var(--cream);border:1px solid var(--hair)}.danger{background:#5a2323;color:white}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.top{position:sticky;top:0;z-index:5;background:rgba(9,26,18,.96);border-bottom:1px solid var(--hair);padding:13px 18px;display:flex;justify-content:space-between;align-items:center}.layout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 58px)}nav{background:var(--ink);padding:16px;border-right:1px solid var(--hair)}nav button{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--sage);padding:12px;border-radius:9px;cursor:pointer}nav button.active,nav button:hover{background:var(--panel);color:var(--cream)}main{padding:22px;max-width:1300px;width:100%}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.metric strong{font-size:28px;color:var(--gold2)}.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:15px 0;flex-wrap:wrap}.search{max-width:380px}.list{display:grid;gap:10px}.item{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--hair);padding:15px;border-radius:12px}.item p{margin:4px 0 0;color:var(--sage);font-size:13px}.pill{padding:5px 9px;border:1px solid var(--hair);border-radius:999px;font-size:12px;color:var(--gold2)}dialog{width:min(680px,calc(100% - 28px));border:1px solid var(--hair);border-radius:14px;background:var(--panel);color:var(--cream);padding:0}dialog::backdrop{background:rgba(0,0,0,.72)}.modal{padding:20px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.wide{grid-column:1/-1}.code{font-family:ui-monospace,monospace;color:var(--gold2)}.notice{padding:12px;border:1px solid var(--hair);border-radius:10px;margin:12px 0;color:var(--sage)}@media(max-width:850px){.layout{grid-template-columns:1fr}nav{display:flex;overflow:auto;border-right:0;border-bottom:1px solid var(--hair);padding:8px;position:sticky;top:58px;z-index:4}nav button{white-space:nowrap;width:auto}.grid{grid-template-columns:1fr 1fr}main{padding:16px}.formgrid{grid-template-columns:1fr}.wide{grid-column:auto}}@media(max-width:520px){.grid{grid-template-columns:1fr}.item{grid-template-columns:1fr}.top .brand{font-size:12px}}
+:root{--ink:#091a12;--green:#0f271c;--panel:#143222;--lift:#1a3d2a;--gold:#c7a25a;--gold2:#dcc38c;--cream:#f3efe4;--sage:#94a89a;--hair:rgba(199,162,90,.2);font-family:Inter,system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--green);color:var(--cream)}button,input,select,textarea{font:inherit}.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;padding:24px}.card{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:22px}.login .card{width:min(440px,100%)}.brand{font-weight:800;letter-spacing:.16em}.brand span{color:var(--gold)}h1,h2,h3{margin:0 0 10px}.muted{color:var(--sage)}label{display:block;font-size:12px;color:var(--sage);margin:14px 0 6px}input,select,textarea{width:100%;background:var(--ink);color:var(--cream);border:1px solid var(--hair);border-radius:10px;padding:12px}.btn{border:0;border-radius:10px;padding:12px 15px;cursor:pointer;font-weight:700}.primary{background:var(--gold);color:var(--ink)}.ghost{background:transparent;color:var(--cream);border:1px solid var(--hair)}.danger{background:#5a2323;color:white}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.top{position:sticky;top:0;z-index:5;background:rgba(9,26,18,.96);border-bottom:1px solid var(--hair);padding:13px 18px;display:flex;justify-content:space-between;align-items:center}.layout{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 58px)}nav{background:var(--ink);padding:16px;border-right:1px solid var(--hair)}nav button{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--sage);padding:12px;border-radius:9px;cursor:pointer}nav button.active,nav button:hover{background:var(--panel);color:var(--cream)}main{padding:22px;max-width:1300px;width:100%}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.metric strong{font-size:28px;color:var(--gold2)}.toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:15px 0;flex-wrap:wrap}.search{max-width:380px}.list{display:grid;gap:10px}.item{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--hair);padding:15px;border-radius:12px}.item p{margin:4px 0 0;color:var(--sage);font-size:13px}.pill{padding:5px 9px;border:1px solid var(--hair);border-radius:999px;font-size:12px;color:var(--gold2)}dialog{width:min(680px,calc(100% - 28px));border:1px solid var(--hair);border-radius:14px;background:var(--panel);color:var(--cream);padding:0}dialog::backdrop{background:rgba(0,0,0,.72)}.modal{padding:20px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.wide{grid-column:1/-1}.code{font-family:ui-monospace,monospace;color:var(--gold2)}.notice{padding:12px;border:1px solid var(--hair);border-radius:10px;margin:12px 0;color:var(--sage)}
+.timeline{display:grid;gap:10px;margin-top:14px}.weekrow{display:grid;grid-template-columns:minmax(90px,.6fr) 1.5fr auto;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--hair);padding:14px;border-radius:12px}.weekrow.current{outline:1px solid var(--gold)}.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sage);margin-right:7px}.status-dot.live{background:var(--gold2)}.status-dot.done{background:#8dc89b}.status-dot.draft{background:#9aa39d}.kicker{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold2);font-weight:800}.split{display:grid;grid-template-columns:2fr 1fr;gap:14px}.mini{font-size:12px}.exercise-name{font-weight:700}.exercise-meta{font-size:12px;color:var(--sage);margin-top:2px}.video-ok{color:var(--gold2);font-size:12px}.login-links{display:flex;justify-content:flex-end;margin-top:10px}.linkbtn{background:none;border:0;padding:0;color:var(--gold2);cursor:pointer;font:inherit;text-decoration:underline}.context-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.context-grid .card{padding:14px}.context-grid strong{display:block;font-size:18px;color:var(--gold2)}@media(max-width:850px){.layout{grid-template-columns:1fr}nav{display:flex;overflow:auto;border-right:0;border-bottom:1px solid var(--hair);padding:8px;position:sticky;top:58px;z-index:4}nav button{white-space:nowrap;width:auto}.grid{grid-template-columns:1fr 1fr}main{padding:16px}.formgrid{grid-template-columns:1fr}.wide{grid-column:auto}}@media(max-width:520px){.grid{grid-template-columns:1fr}.item{grid-template-columns:1fr}.top .brand{font-size:12px}}
 </style></head><body>
-<section id="login" class="login"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Private Control Room</h1><p class="muted">Secure founder access. This page is never linked from the public website.</p><form id="loginForm"><label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required><p id="loginErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Log in</button></form><div id="setupNotice" class="notice hidden">Supabase is not configured yet. Add your project values to <span class="code">config.js</span>.</div></div></section>
+<section id="login" class="login"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Private Control Room</h1><p class="muted">Secure founder access. This page is never linked from the public website.</p><form id="loginForm"><label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required><p id="loginErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Log in</button><div class="login-links"><button type="button" class="linkbtn" id="forgotPassword">Forgot password?</button></div></form><div id="setupNotice" class="notice hidden">Supabase is not configured yet. Add your project values to <span class="code">config.js</span>.</div></div></section>
+<section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
 <section id="app" class="hidden"><header class="top"><div class="brand">DU AIRLINES <span>ADMIN</span></div><button id="logout" class="btn ghost">Log out</button></header><div class="layout"><nav id="nav"></nav><main id="main"></main></div></section>
 <dialog id="modal"><form method="dialog" class="modal" id="modalForm"></form></dialog>
 <script>
@@ -65,6 +67,36 @@ const isPrivateAthlete=a=>!!a?.athlete_user_id;
 const isParentManaged=a=>!!a?.parent_user_id;
 const athleteKind=a=>isParentManaged(a)?'Parent-managed':isPrivateAthlete(a)?'Private Athlete':'School / legacy profile';
 const feedbackNeedsReview=f=>f.status!=='no_change'&&!f.reviewed_at;
+const directProgrammeAthlete=a=>!!a?.programme_id;
+const athleteCurrentWeek=a=>{
+  const cohort=cohortFor(a?.cohort_id);
+  return Number.isInteger(a?.current_week)?a.current_week:(cohort?.current_week||1);
+};
+const athleteProgrammeId=a=>a?.programme_id||cohortFor(a?.cohort_id)?.programme_id||null;
+const athleteProgrammeName=a=>programmeName(athleteProgrammeId(a));
+const programmeWeeksFor=(programmeId)=>state.programmeWeeks
+  .filter(w=>w.programme_id===programmeId)
+  .sort((a,b)=>(a.week_number||0)-(b.week_number||0));
+const isPublishedWeek=w=>!!(w?.published_at&&w?.verification_status==='verified'&&(w?.status==='live'||w?.status==='completed'));
+const weekStatusLabel=(w,currentWeek)=>{
+  if(!w)return 'Not built';
+  if(w.week_number===currentWeek&&isPublishedWeek(w))return 'Live';
+  if(w.week_number<currentWeek&&isPublishedWeek(w))return 'Completed';
+  if(isPublishedWeek(w))return 'Published';
+  return 'Draft';
+};
+const feedbackForContext=(athleteId,cohortId,weekNumber)=>state.feedback
+  .filter(f=>(athleteId&&f.athlete_id===athleteId)||(!athleteId&&cohortId&&f.cohort_id===cohortId))
+  .filter(f=>f.week_number===weekNumber)
+  .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+const exerciseByCode=code=>state.exercises.find(e=>e.code===code);
+const prettyPrescription=p=>{
+  const ex=exerciseByCode(p.exerciseCode);
+  const name=ex?.name||p.exerciseCode||'Exercise';
+  const video=ex?.video_id||ex?.video_url;
+  return `<div style="margin:8px 0"><span class="exercise-name">${esc(name)}</span> <span class="code mini">${esc(p.exerciseCode||'')}</span><div class="exercise-meta">${esc(p.dosage||'')}${p.rest?' · Rest '+esc(p.rest):''}${p.cues?' · '+esc(p.cues):''}</div>${video?'<div class="video-ok">Video attached ✓</div>':''}</div>`;
+};
+
 const feedbackLabel=f=>{
   if(f.status==='adjustment_flagged')return 'Adjustment flagged';
   if(f.status==='reviewed')return 'Review';
@@ -162,18 +194,21 @@ function renderAthletes(m){
 }
 
 function athleteRows(rows){
-  return rows.map(a=>{
-    const cohort=cohortFor(a.cohort_id);
-    const week=cohort?.current_week?`Week ${cohort.current_week}`:'No live week';
-    const kind=athleteKind(a);
-    const onboarding=(a.parent_user_id||a.athlete_user_id)?(a.onboarding_complete?'Onboarding complete':'Onboarding pending'):'Shared/legacy record';
-    const actions=(a.parent_user_id||a.athlete_user_id)?accessButtons('athlete',a):'';
-    return `<div class="item" data-search="${esc(((a.full_name||'')+' '+kind+' '+(cohort?.name||'')).toLowerCase())}">
-      <div><strong>${esc(a.full_name||a.display_name||'Unnamed athlete')}</strong>
-      <p>${esc(kind)} · ${esc(cohort?.name||'Not assigned')} · ${esc(week)} · ${esc(onboarding)}</p></div>
-      <div class="row"><span class="pill">${esc(a.access_status||'pending')}</span>${a.cohort_id?`<button class="btn ghost" data-programme-context="athlete" data-programme-id="${a.id}">Current Programme</button>`:''}${(a.parent_user_id||a.athlete_user_id)?`<button class="btn ghost" data-substitutions="${a.id}">Exercise Swap</button>`:''}<button class="btn ghost" data-edit-athlete="${a.id}">Manage</button>${actions}</div>
-    </div>`;
-  }).join('')||'<div class="card muted">No athletes yet.</div>';
+   return rows.map(a=>{
+     const cohort=cohortFor(a.cohort_id);
+     const currentWeek=athleteCurrentWeek(a);
+     const programmeId=athleteProgrammeId(a);
+     const programme=programmeId?programmeName(programmeId):'Not assigned';
+     const kind=athleteKind(a);
+     const onboarding=(a.parent_user_id||a.athlete_user_id)?(a.onboarding_complete?'Onboarding complete':'Onboarding pending'):'Shared/legacy record';
+     const actions=(a.parent_user_id||a.athlete_user_id)?accessButtons('athlete',a):'';
+     const searchText=((a.full_name||'')+' '+kind+' '+(cohort?.name||'')+' '+programme).toLowerCase();
+     return `<div class="item" data-search="${esc(searchText)}">
+       <div><strong>${esc(a.full_name||a.display_name||'Unnamed athlete')}</strong>
+       <p>${esc(kind)} · ${esc(programme)} · Week ${esc(currentWeek)} · ${esc(onboarding)}</p></div>
+       <div class="row"><span class="pill">${esc(a.access_status||'pending')}</span>${programmeId?`<button class="btn ghost" data-programme-context="athlete" data-programme-id="${a.id}">Programme Room</button>`:''}${(a.parent_user_id||a.athlete_user_id)?`<button class="btn ghost" data-substitutions="${a.id}">Exercise Swap</button>`:''}<button class="btn ghost" data-edit-athlete="${a.id}">Manage</button>${actions}</div>
+     </div>`;
+   }).join('')||'<div class="card muted">No athletes yet.</div>';
 }
 
 function renderProfessionals(m){
@@ -254,23 +289,30 @@ function cohortForm(c={}){
 
 
 function contextDetails(){
-  const ctx=state.programmeContext;
-  if(!ctx)return null;
-  let cohort=null,label='',account=null;
-  if(ctx.type==='cohort'){
-    cohort=byId(state.cohorts,ctx.id);
-    label=cohort?.name||'Cohort';
-  }else if(ctx.type==='athlete'){
-    account=byId(state.athletes,ctx.id);
-    cohort=cohortFor(account?.cohort_id);
-    label=account?.full_name||account?.display_name||'Athlete';
-  }else if(ctx.type==='professional'){
-    account=byId(state.professionals,ctx.id);
-    cohort=cohortFor(account?.cohort_id);
-    label=[account?.first_name,account?.last_name].filter(Boolean).join(' ')||account?.email||'Professional';
-  }
-  if(!cohort)return null;
-  return {ctx,cohort,label,account};
+   const ctx=state.programmeContext;
+   if(!ctx)return null;
+   let cohort=null,label='',account=null,programmeId=null,currentWeek=1,direct=false;
+   if(ctx.type==='cohort'){
+     cohort=byId(state.cohorts,ctx.id);
+     label=cohort?.name||'Cohort';
+     programmeId=cohort?.programme_id||null;
+     currentWeek=cohort?.current_week||1;
+   }else if(ctx.type==='athlete'){
+     account=byId(state.athletes,ctx.id);
+     cohort=cohortFor(account?.cohort_id);
+     label=account?.full_name||account?.display_name||'Athlete';
+     programmeId=athleteProgrammeId(account);
+     currentWeek=athleteCurrentWeek(account);
+     direct=!!account?.programme_id;
+   }else if(ctx.type==='professional'){
+     account=byId(state.professionals,ctx.id);
+     cohort=cohortFor(account?.cohort_id);
+     label=[account?.first_name,account?.last_name].filter(Boolean).join(' ')||account?.email||'Professional';
+     programmeId=cohort?.programme_id||null;
+     currentWeek=cohort?.current_week||1;
+   }
+   if(!programmeId)return null;
+   return {ctx,cohort,label,account,programmeId,currentWeek,direct};
 }
 
 function weekForCohort(cohort){
@@ -356,57 +398,91 @@ function dayEditor(day){
 }
 
 function previewDay(day){
-  const blocks=blocksForDay(day.id);
-  openModal(`<h2>Athlete Preview — ${esc(day.title||day.day_key)}</h2>
-  <p class="muted">${esc(day.objective||'')}</p>
-  <div class="row"><span class="pill">${esc(day.intensity||'')}</span><span class="pill">${esc(day.duration||'')}</span>${day.playlist_url?`<span class="pill">Playlist attached</span>`:''}</div>
-  <div class="list" style="margin-top:14px">${blocks.map(b=>{
-    const c=b.content||{};
-    const prescriptions=Array.isArray(c.prescriptions)?c.prescriptions.map(p=>`${esc(p.exerciseCode||'Exercise')} — ${esc(p.dosage||'')} ${p.rest?'· Rest '+esc(p.rest):''}`).join('<br>'):'';
-    const items=Array.isArray(c.items)?c.items.map(x=>esc(x)).join('<br>'):'';
-    return `<div class="card"><strong>${esc(b.title||b.block_type||'Block')}</strong><p>${esc(c.focus||'')}</p><p>${prescriptions||items||'No prescription text.'}</p>${b.athlete_note?`<p><strong>Note:</strong> ${esc(b.athlete_note)}</p>`:''}</div>`;
-  }).join('')}</div>
-  <div class="row" style="margin-top:18px"><button value="cancel" class="btn primary">Close Preview</button></div>`);
+   const blocks=blocksForDay(day.id);
+   openModal(`<h2>Athlete Preview — ${esc(day.title||day.day_key)}</h2>
+   <p class="muted">${esc(day.objective||'')}</p>
+   <div class="row"><span class="pill">${esc(day.intensity||'')}</span><span class="pill">${esc(day.duration||'')}</span>${day.playlist_url?`<span class="pill">Playlist attached</span>`:''}</div>
+   <div class="list" style="margin-top:14px">${blocks.map(b=>{
+     const c=b.content||{};
+     const prescriptions=Array.isArray(c.prescriptions)?c.prescriptions.map(prettyPrescription).join(''):'';
+     const items=Array.isArray(c.items)?c.items.map(x=>`<div style="margin:6px 0">${esc(x)}</div>`).join(''):'';
+     return `<div class="card"><strong>${esc(b.title||b.block_type||'Block')}</strong><p>${esc(c.focus||'')}</p>${prescriptions||items||'<p>No prescription text.</p>'}${b.athlete_note?`<p><strong>Note:</strong> ${esc(b.athlete_note)}</p>`:''}</div>`;
+   }).join('')}</div>
+   <div class="row" style="margin-top:18px"><button value="cancel" class="btn primary">Close Preview</button></div>`);
 }
 
 function renderProgrammeEditor(m){
-  const d=contextDetails();
-  if(!d){
-    state.page='dashboard';
-    render();
-    return;
-  }
-  const {cohort,label}=d;
-  const week=weekForCohort(cohort);
-  const programme=byId(state.programmes,cohort.programme_id);
-  const memberCount=membersInCohort(cohort.id);
-  if(!week){
-    m.innerHTML=`<button class="btn ghost" data-page="${d.ctx.type==='cohort'?'cohorts':d.ctx.type==='professional'?'professionals':'athletes'}">← Back</button>
-    <div class="card" style="margin-top:14px"><h2>${esc(label)}</h2><p class="muted">No programme week matching Week ${cohort.current_week||1} is available for this cohort.</p></div>`;
-    return;
-  }
-  const days=state.trainingDays.filter(td=>td.programme_week_id===week.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
-  const published=!!(week.published_at&&week.verification_status==='verified'&&(week.status==='live'||week.status==='completed'));
-  const scopeText=memberCount===1
-    ?'This cohort currently has 1 account. Changes to the base week affect that account.'
-    :`This cohort currently has ${memberCount} account(s). Changes made here affect everyone assigned to this cohort/programme week.`;
-  m.innerHTML=`${loadWarning()}
-  <div class="toolbar"><div>
-    <button class="btn ghost" data-page="${d.ctx.type==='cohort'?'cohorts':d.ctx.type==='professional'?'professionals':'athletes'}">← Back</button>
-    <h1 style="margin-top:14px">${esc(label)} — Current Programme</h1>
-    <p class="muted">${esc(programme?.name||'Programme')} · Week ${week.week_number} · ${esc(week.phase||cohort.current_phase||'Phase not set')}</p>
-  </div></div>
-  <div class="notice">${esc(scopeText)} ${published?'This week is currently published and verified, so saved edits can appear in the Hub on reload.':'This week is not currently published/verified, so the Hub will not expose it yet.'}</div>
-  <div class="list">${days.map(day=>`<div class="card">
-    <div class="toolbar"><div><h3>${esc(day.day_key)} — ${esc(day.title)}</h3>
-    <p class="muted">${esc(day.objective||'')} · ${esc(day.intensity||'')} · ${esc(day.duration||'')}</p>
-    ${day.playlist_url?`<p><span class="pill">YouTube playlist attached</span></p>`:'<p class="muted">No playlist attached.</p>'}
-    </div><div class="row"><button class="btn ghost" data-preview-day="${day.id}">Preview</button><button class="btn ghost" data-edit-day="${day.id}">Edit Day / Video</button></div></div>
-    <div class="list">${blocksForDay(day.id).map(block=>`<div class="item"><div><strong>${esc(block.title||block.block_type||'Workout block')}</strong>
-      <p>${esc(block.content?.focus||'')}${Array.isArray(block.content?.prescriptions)?' · '+block.content.prescriptions.length+' exercise(s)':Array.isArray(block.content?.items)?' · '+block.content.items.length+' item(s)':''}</p></div>
-      <button class="btn ghost" data-edit-block="${block.id}">Edit Workout</button></div>`).join('')||'<div class="muted">No workout blocks.</div>'}
-    </div>
-  </div>`).join('')||'<div class="card muted">No training days in this week.</div>'}</div>`;
+   const d=contextDetails();
+   if(!d){
+     state.page='dashboard';render();return;
+   }
+   const {label,account,programmeId,currentWeek,direct,cohort}=d;
+   const programme=byId(state.programmes,programmeId);
+   const weeks=programmeWeeksFor(programmeId);
+   let week=state.selectedWeekId?byId(state.programmeWeeks,state.selectedWeekId):weeks.find(w=>w.week_number===currentWeek);
+   if(!week)week=weeks.find(w=>w.week_number===currentWeek)||weeks[weeks.length-1]||null;
+   const selectedWeekNumber=week?.week_number||currentWeek;
+   const days=week?state.trainingDays.filter(td=>td.programme_week_id===week.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)):[];
+   const athleteId=d.ctx.type==='athlete'?account?.id:null;
+   const fb=feedbackForContext(athleteId,cohort?.id,selectedWeekNumber);
+   const latestFeedback=fb[0];
+   const published=week?isPublishedWeek(week):false;
+   const memberCount=cohort?.id?membersInCohort(cohort.id):1;
+   const scopeText=direct
+     ?'Individual programme. Changes affect this athlete only.'
+     :(memberCount===1?'This programme currently has 1 account.':'Changes to this base week affect everyone assigned to this cohort.');
+   const builtWeekNumbers=new Set(weeks.map(w=>w.week_number));
+   const maxWeek=Math.max(programme?.duration_weeks||0,currentWeek+4,...weeks.map(w=>w.week_number||0));
+   const timeline=Array.from({length:maxWeek},(_,i)=>i+1).map(n=>{
+     const w=weeks.find(x=>x.week_number===n);
+     const labelText=weekStatusLabel(w,currentWeek);
+     const dot=labelText==='Live'?'live':labelText==='Completed'?'done':'draft';
+     return `<div class="weekrow ${n===currentWeek?'current':''}">
+       <div><span class="status-dot ${dot}"></span><strong>Week ${n}</strong></div>
+       <div><span class="pill">${esc(labelText)}</span>${w?.phase?` <span class="muted mini">${esc(w.phase)}</span>`:''}</div>
+       <div>${w?`<button class="btn ghost" data-select-week="${w.id}">Open</button>`:'<span class="muted mini">Not built</span>'}</div>
+     </div>`;
+   }).join('');
+
+   m.innerHTML=`${loadWarning()}
+   <div class="toolbar"><div>
+     <button class="btn ghost" data-page="${d.ctx.type==='cohort'?'cohorts':d.ctx.type==='professional'?'professionals':'athletes'}">← Back</button>
+     <div class="kicker" style="margin-top:16px">${direct?'Individual Programme':'Programme Room'}</div>
+     <h1>${esc(label)}</h1>
+     <p class="muted">${esc(programme?.name||'Programme')} · Current Week ${currentWeek}</p>
+   </div></div>
+
+   <div class="context-grid">
+     <div class="card"><span class="muted mini">Current week</span><strong>Week ${currentWeek}</strong></div>
+     <div class="card"><span class="muted mini">Built weeks</span><strong>${weeks.length}</strong></div>
+     <div class="card"><span class="muted mini">Selected week</span><strong>Week ${selectedWeekNumber}</strong></div>
+     <div class="card"><span class="muted mini">Feedback</span><strong>${latestFeedback?feedbackLabel(latestFeedback):'Waiting'}</strong></div>
+   </div>
+
+   <div class="split">
+     <div>
+       <div class="toolbar"><div><h2>Week ${selectedWeekNumber}${week?.phase?' — '+esc(week.phase):''}</h2><p class="muted">${esc(week?.weekly_objective||'No weekly objective yet.')}</p></div>
+       ${week?`<span class="pill">${published?'Published / visible':'Draft / hidden'}</span>`:''}</div>
+       <div class="notice">${esc(scopeText)} ${published?'This week is published and can appear in the Hub.':'This week is not currently exposed to the athlete.'}</div>
+       ${latestFeedback?`<div class="card" style="margin-bottom:14px"><div class="kicker">Week ${selectedWeekNumber} Feedback</div><p>${feedbackSummary(latestFeedback)||'No response details.'}</p><p class="muted mini">Submitted ${esc(fmtDate(latestFeedback.created_at))}</p></div>`:`<div class="card" style="margin-bottom:14px"><div class="kicker">Week ${selectedWeekNumber} Feedback</div><p class="muted">No feedback submitted for this week yet.</p></div>`}
+       <div class="list">${days.map(day=>`<div class="card">
+         <div class="toolbar"><div><h3>${esc(day.day_key)} — ${esc(day.title)}</h3>
+         <p class="muted">${esc(day.objective||'')} · ${esc(day.intensity||'')} · ${esc(day.duration||'')}</p></div>
+         <div class="row"><button class="btn ghost" data-preview-day="${day.id}">Preview</button><button class="btn ghost" data-edit-day="${day.id}">Edit Day</button></div></div>
+         <div class="list">${blocksForDay(day.id).map(block=>{
+           const prescriptions=Array.isArray(block.content?.prescriptions)?block.content.prescriptions:[];
+           const named=prescriptions.map(p=>exerciseByCode(p.exerciseCode)?.name||p.exerciseCode).filter(Boolean);
+           return `<div class="item"><div><strong>${esc(block.title||block.block_type||'Workout block')}</strong>
+             <p>${esc(block.content?.focus||'')}${named.length?' · '+esc(named.join(', ')):''}</p></div>
+             <button class="btn ghost" data-edit-block="${block.id}">Edit Workout</button></div>`;
+         }).join('')||'<div class="muted">No workout blocks.</div>'}</div>
+       </div>`).join('')||'<div class="card muted">No training days built for this week.</div>'}</div>
+     </div>
+     <div>
+       <div class="card"><div class="kicker">Programme Timeline</div><p class="muted">Past, live and future programme weeks in one place.</p><div class="timeline">${timeline}</div></div>
+       <div class="card" style="margin-top:14px"><div class="kicker">Next Build</div><p class="muted">Draft future weeks can already live in Supabase without being shown to the athlete. Safe copy-forward/publish controls should be added through a protected transaction once the repo branch is available.</p></div>
+     </div>
+   </div>`;
 }
 
 async function saveTrainingDay(){
@@ -640,7 +716,7 @@ async function saveAccessCode(){
 
 function renderSettings(m){
   m.innerHTML=`${loadWarning()}<h1>Settings</h1><div class="card"><h3>Admin account</h3>
-  <p class="muted">Signed in as ${esc(state.admin?.display_name||'Du Airlines Admin')}. This Control Room opens only for users present in <span class="code">admin_profiles</span>.</p>
+  <p class="muted">Signed in as ${esc(state.admin?.display_name||'Du Airlines Admin')}. This Control Room opens only for users present in <span class="code">admin_profiles</span>. Password recovery is also available from the login screen.</p>
   <button class="btn ghost" id="passwordReset">Send password reset email</button></div>`;
 }
 
@@ -844,6 +920,48 @@ async function authorisedAdmin(){
   const {data,error}=await sb.from('admin_profiles').select('user_id,display_name').eq('user_id',user.id).maybeSingle();
   if(error||!data)return null;
   return data;
+}
+
+
+document.getElementById('forgotPassword').addEventListener('click',async ()=>{
+  if(!configured){document.getElementById('setupNotice').classList.remove('hidden');return;}
+  const emailValue=String(document.getElementById('email').value||'').trim();
+  const loginErr=document.getElementById('loginErr');
+  if(!emailValue){loginErr.textContent='Enter your admin email first, then choose Forgot password.';return;}
+  loginErr.textContent='';
+  const redirectTo=location.origin+location.pathname;
+  const {error}=await sb.auth.resetPasswordForEmail(emailValue,{redirectTo});
+  if(error){loginErr.textContent=error.message;return;}
+  loginErr.style.color='#dcc38c';
+  loginErr.textContent='Password reset email sent. Check your inbox.';
+});
+
+
+document.getElementById('recoveryForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const pw=String(document.getElementById('newPassword').value||'');
+  const confirmPw=String(document.getElementById('confirmPassword').value||'');
+  const err=document.getElementById('recoveryErr');
+  err.style.color='#ffb4b4';
+  err.textContent='';
+  if(pw.length<8){err.textContent='Use at least 8 characters.';return;}
+  if(pw!==confirmPw){err.textContent='Passwords do not match.';return;}
+  const {error}=await sb.auth.updateUser({password:pw});
+  if(error){err.textContent=error.message;return;}
+  err.style.color='#dcc38c';
+  err.textContent='Password updated. Opening Control Room…';
+  document.getElementById('recovery').classList.add('hidden');
+  await init();
+});
+
+if(sb){
+  sb.auth.onAuthStateChange(async (event)=>{
+    if(event==='PASSWORD_RECOVERY'){
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('recovery').classList.remove('hidden');
+    }
+  });
 }
 
 document.getElementById('loginForm').addEventListener('submit',async e=>{
