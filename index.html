@@ -722,6 +722,8 @@ async function saveQuickWrite(){
     });
     return {block_type:b.block_type||'workout',title:b.title||'Workout',content:{focus:b.focus||'',prescriptions,exerciseCodes:prescriptions.map(p=>p.exerciseCode)}};
   });
+  const qwDay=byId(state.trainingDays,dayId);
+  if(liveWeekForTrainingDay(qwDay)){alert('Quick Write replacement is temporarily restricted on published weeks. Use Edit Workout Block for authenticated publishing; draft weeks still support Quick Write.');return;}
   if(!blocks.length){alert('No workout blocks to save.');return;}
   if(!confirm(`Replace this training day with ${blocks.length} Quick Write block${blocks.length===1?'':'s'}?`))return;
   const button=document.getElementById('saveQuickWrite');button.disabled=true;const original=button.textContent;button.textContent='Saving…';
@@ -739,7 +741,48 @@ function liveWeekForTrainingDay(day){
 function confirmLiveEdit(day,action){
   const week=liveWeekForTrainingDay(day);
   if(!week)return true;
-  return confirm(`LIVE WEEK — ${action} will be visible to athletes when they reload. Continue?`);
+  alert('Published workout changes must pass the secure publishing preview. Open an existing workout block and use Save Workout Update. This action is unavailable on a live week until it has the same protection.');
+  return false;
+}
+function publishingTargets(programmeId,weekNumber){
+  return state.athletes.filter(a=>{
+    if(a.access_status!=='active')return false;
+    const direct=a.athlete_type==='private'&&a.programme_id;
+    if(direct)return a.programme_id===programmeId&&Number(a.current_week)===weekNumber;
+    const cohort=byId(state.cohorts,a.cohort_id);
+    return cohort?.status==='live'&&cohort.programme_id===programmeId&&Number(cohort.current_week)===weekNumber;
+  }).sort((a,b)=>String(a.full_name||a.display_name||'').localeCompare(String(b.full_name||b.display_name||'')));
+}
+async function protectedWorkoutPublish(block,content){
+  const day=byId(state.trainingDays,block.training_day_id);
+  const week=day?byId(state.programmeWeeks,day.programme_week_id):null;
+  if(!week||!isPublishedWeek(week))throw Error('Published week not found.');
+  const targets=publishingTargets(week.programme_id,Number(week.week_number));
+  if(!targets.length)throw Error('No active athlete is assigned to this current programme week. Publishing is blocked to avoid editing the wrong recipient.');
+  let athlete=targets[0];
+  if(targets.length>1){
+    const options=targets.map((a,i)=>`${i+1}. ${a.full_name||a.display_name||a.id}`).join('\\n');
+    const chosen=prompt('Confirm the recipient used for secure validation (the programme may be shared):\\n'+options+'\\n\\nEnter a number:', '1');
+    if(chosen===null)throw Error('Publishing cancelled.');
+    const index=Number(chosen)-1;
+    if(!Number.isInteger(index)||index<0||index>=targets.length)throw Error('Choose a valid athlete number.');
+    athlete=targets[index];
+  }
+  const args={athleteId:athlete.id,programmeId:week.programme_id,weekNumber:Number(week.week_number),blockId:block.id};
+  const invoke=async payload=>{
+    const {data,error}=await sb.functions.invoke('admin-workout-publish',{body:payload});
+    if(error)throw Error(data?.message||data?.code||error.message||'Secure publishing request failed.');
+    if(data?.code)throw Error(data.message||data.code);
+    return data;
+  };
+  const preview=await invoke({action:'preview',...args});
+  if(preview.status!=='PREVIEW_ONLY'||preview.blockId!==block.id||preview.athleteId!==athlete.id)throw Error('Secure preview did not match the selected workout.');
+  if(JSON.stringify(preview.currentContent)!==JSON.stringify(block.content))throw Error('Workout changed since it was loaded. Reload the Control Room before publishing.');
+  const scope=preview.otherRecipients?`SHARED PROGRAMME: ${preview.otherRecipients} other assigned athlete(s) may see this change.`:'Individual programme';
+  if(!confirm(`PUBLISH WORKOUT UPDATE\\nAthlete: ${preview.athleteName||athlete.full_name||athlete.display_name}\\nWeek: ${week.week_number}\\nBlock: ${preview.blockTitle||block.title}\\n${scope}\\n\\nPublish the edited workout content?`))throw Error('Publishing cancelled.');
+  const result=await invoke({action:'update-block',...args,confirmTarget:athlete.id,confirmShared:preview.otherRecipients>0,expectedContent:preview.currentContent,content});
+  if(result?.status!=='WORKOUT_BLOCK_VERIFIED')throw Error('Publish response was not verified. Reload and check the live workout.');
+  return result;
 }
 
 function addExerciseForm(block){
@@ -991,7 +1034,7 @@ async function saveWorkoutBlock(){
   const block=byId(state.sessionBlocks,id);
   if(!block)return;
   const editDay=byId(state.trainingDays,block.training_day_id);
-  if(!confirmLiveEdit(editDay,'Editing this workout block'))return;
+  const published=!!liveWeekForTrainingDay(editDay);
   const content={...(block.content||{})};
   content.focus=String(document.getElementById('blockFocus').value||'').trim();
   content.requirement=String(document.getElementById('blockRequirement').value||'').trim();
@@ -1029,7 +1072,19 @@ async function saveWorkoutBlock(){
     athlete_note:String(document.getElementById('blockAthleteNote').value||'').trim(),
     content
   };
-  const ok=confirm('Save this workout tweak to Supabase? This edits the current programme block and can appear in the Hub on reload.');
+  if(published){
+    const titleChanged=update.title!==String(block.title||'');
+    const noteChanged=update.athlete_note!==String(block.athlete_note||'');
+    if(titleChanged||noteChanged){alert('For a published week, this protected workflow updates the workout content only. Keep the block title and athlete note unchanged for now.');return;}
+    try{
+      await protectedWorkoutPublish(block,content);
+      document.getElementById('modal').close();
+      await load();
+      alert('Published and verified through the secure Supabase endpoint.');
+    }catch(error){if(error.message!=='Publishing cancelled.')alert(error.message||'Publishing failed. No change was confirmed.');}
+    return;
+  }
+  const ok=confirm('Save this draft workout update to Supabase?');
   if(!ok)return;
   const {error}=await sb.from('session_blocks').update(update).eq('id',id);
   if(error){alert(error.message);return;}
