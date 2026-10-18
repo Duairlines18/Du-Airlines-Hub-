@@ -43,6 +43,7 @@ window.DU_AIRLINES_ENV = {
 <section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
 <section id="app" class="hidden"><header class="top"><div class="brand">DU AIRLINES <span>ADMIN</span></div><div class="global-search-wrap"><input id="globalSearch" class="global-search" placeholder="Search athlete, school, programme or exercise…"><div id="globalSearchResults" class="global-search-results hidden"></div></div><button id="logout" class="btn ghost">Log out</button></header><div class="layout"><nav id="nav"></nav><main id="main"></main></div></section>
 <dialog id="modal"><form method="dialog" class="modal" id="modalForm"></form></dialog>
+<script src="qa/workout-validation.js"></script>
 <script>
 
 const env=window.DU_AIRLINES_ENV||{};
@@ -152,6 +153,8 @@ const weekReadiness=(programmeId,weekNumber)=>{
     }
   }
   if(invalidCodes.length)issues.push(`Missing exercise reference: ${[...new Set(invalidCodes)].join(', ')}`);
+  if(typeof workoutDeliveryIssues!=='function')issues.push('Delivery checker unavailable. Reload before publishing.');
+  else issues.push(...workoutDeliveryIssues(blocks,state.exercises));
   if(issues.length)return {level:'incomplete',label:'Incomplete',issues,week,days:days.length,blocks:blocks.length};
   return {level:isPublishedWeek(week)?'live':'ready',label:isPublishedWeek(week)?'Published':'Ready',issues:[],week,days:days.length,blocks:blocks.length};
 };
