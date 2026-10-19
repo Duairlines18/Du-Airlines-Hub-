@@ -13,6 +13,7 @@ function workoutDeliveryIssues(blocks, library) {
     const items = Array.isArray(content.items) ? content.items : [];
     const links = Array.isArray(content.video_links) ? content.video_links : [];
     for (const [index, prescription] of prescriptions.entries()) {
+      if (!prescription?.exerciseCode && typeof prescription?.instruction === 'string' && prescription.instruction.trim()) continue;
       if (!prescription?.exerciseCode || !String(prescription.dosage || '').trim()) issues.push(label + ': dosage/exercise missing at row ' + (index + 1));
       for (const code of [prescription?.exerciseCode, prescription?.alternativeExerciseCode].filter(Boolean)) {
         if (!hasDemo(byCode.get(code))) issues.push(label + ': approved active demo missing for ' + code);

@@ -14,6 +14,10 @@ test('publication check rejects broken text mappings',()=>{
 test('publication check accepts ordinary run instructions without inventing exercise videos',()=>{
  assert.equal(check([{content:{items:['30-minute easy run only.']}}],library).length,0);
 });
+test('explicit instruction-only prescriptions are valid and empty instructions fail',()=>{
+ assert.equal(check([{content:{prescriptions:[{instruction:'3 x 80m; rest 3 min'}]}}],library).length,0);
+ assert.ok(check([{content:{prescriptions:[{instruction:''}]}}],library).length>0);
+});
 test('a more specific movement is not mistaken for its shorter parent name',()=>{
  const ex=[{code:'A',name:'Dead Bug',active:true,video_url:'https://www.youtube.com/watch?v=example'},{code:'B',name:'Dead Bug Heel Tap',active:true,video_url:'https://www.youtube.com/watch?v=example2'}];
  assert.equal(check([{content:{items:['Dead Bug Heel Tap — 2 × 6'],video_links:[{item_index:0,exercise:'Dead Bug Heel Tap'}]}}],ex).length,0);
