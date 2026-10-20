@@ -728,6 +728,9 @@ async function saveQuickWrite(){
   const qwDay=byId(state.trainingDays,dayId);
   if(liveWeekForTrainingDay(qwDay)){alert('Quick Write replacement is temporarily restricted on published weeks. Use Edit Workout Block for authenticated publishing; draft weeks still support Quick Write.');return;}
   if(!blocks.length){alert('No workout blocks to save.');return;}
+  if(typeof workoutDeliveryIssues!=='function'){alert('Workout validation unavailable. Reload before saving.');return;}
+  const quickWriteIssues=workoutDeliveryIssues(blocks,state.exercises);
+  if(quickWriteIssues.length){alert('Quick Write needs review before saving:\\n\\n'+quickWriteIssues.join('\\n'));return;}
   if(!confirm(`Replace this training day with ${blocks.length} Quick Write block${blocks.length===1?'':'s'}?`))return;
   const button=document.getElementById('saveQuickWrite');button.disabled=true;const original=button.textContent;button.textContent='Saving…';
   try{
