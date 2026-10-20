@@ -1075,6 +1075,9 @@ async function saveWorkoutBlock(){
     athlete_note:String(document.getElementById('blockAthleteNote').value||'').trim(),
     content
   };
+  if(typeof workoutDeliveryIssues!=='function'){alert('Workout validation is unavailable. Reload before saving.');return;}
+  const validationIssues=workoutDeliveryIssues([{...block,...update}],state.exercises);
+  if(validationIssues.length){alert('Workout needs review before saving:\\n\\n'+validationIssues.join('\\n'));return;}
   if(published){
     const titleChanged=update.title!==String(block.title||'');
     const noteChanged=update.athlete_note!==String(block.athlete_note||'');
