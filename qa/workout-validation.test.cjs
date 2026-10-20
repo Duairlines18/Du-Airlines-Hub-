@@ -29,7 +29,7 @@ test('rejects a stored URL that differs from the canonical exercise',()=>{
 });
 test('rejects a demo for the wrong structured exercise code',()=>{
  const second={code:'STR02',name:'Soleus Hold',active:true,video_url:'https://youtu.be/soleus'};
- const errors=check([{content:{items:['Calf Raise — 3 x 10'],prescriptions:[{exerciseCode:'STR02',dosage:'3 x 10'}],video_links:[{item_index:0,exercise:'Calf Raise',video_url:library[0].video_url}]}}],[...library,second]);
+ const errors=check([{content:{items:['Calf Raise — 3 x 10'],videoLinksAlignWithPrescriptions:true,prescriptions:[{exerciseCode:'STR02',dosage:'3 x 10'}],video_links:[{item_index:0,exercise:'Calf Raise',video_url:library[0].video_url}]}}],[...library,second]);
  assert.ok(errors.some(e=>/does not match prescribed exercise code/.test(e)));
 });
 test('accepts an exact canonical reviewed video URL',()=>{
@@ -39,4 +39,10 @@ test('accepts an exact canonical reviewed video URL',()=>{
 test('rejects duplicate active exercise names as ambiguous',()=>{
  const errors=check([{content:{items:['Calf Raise — 3 x 10'],video_links:[{item_index:0,exercise:'Calf Raise'}]}}],[...library,{...library[0],code:'STR99'}]);
  assert.ok(errors.some(e=>/ambiguous/.test(e)));
+});
+
+test('mixed-format legacy rows do not assume positional prescription alignment',()=>{
+ const second={code:'STR02',name:'Soleus Hold',active:true,video_url:'https://youtu.be/soleus'};
+ const errors=check([{content:{items:['Calf Raise — 3 x 10'],prescriptions:[{exerciseCode:'STR02',dosage:'3 x 10'}],video_links:[{item_index:0,exercise:'Calf Raise',video_url:library[0].video_url}]}}],[...library,second]);
+ assert.ok(!errors.some(e=>/does not match prescribed exercise code/.test(e)));
 });
