@@ -648,7 +648,7 @@ function quickWriteForm(day){
   const existing=blocksForDay(day.id).length;
   openModal(`<h2>Quick Write Workout</h2>
     <p class="muted">${esc(day.day_key||'')} — ${esc(day.title||'Training Day')}</p>
-    ${published?'<div class="notice v3-status-bad"><strong>This week is currently published.</strong> Quick Write will replace this day’s existing workout blocks after preview and confirmation. Changes can appear in the Hub on reload.</div>':''}
+    ${published?'<div class="notice v3-status-bad"><strong>This week is currently published.</strong> Quick Write replacement is disabled for published weeks. Edit an existing block through secure publishing or prepare changes in a draft week.</div>':''}
     ${existing?`<div class="notice">This day currently has ${existing} workout block${existing===1?'':'s'}. Saving Quick Write will snapshot the current day, then replace those blocks atomically.</div>`:''}
     <label class="wide">Type the workout naturally
       <textarea id="qwText" rows="14" placeholder="Warm Up&#10;A March 2x20m&#10;Pogos 2x20&#10;&#10;Acceleration&#10;Falling Start 4x10m&#10;3 Point Start 3x20m, 90 sec rest&#10;&#10;Strength&#10;Split Squat 3x8 each&#10;Calf Raise 3x12"></textarea>
@@ -728,6 +728,9 @@ async function saveQuickWrite(){
   const qwDay=byId(state.trainingDays,dayId);
   if(liveWeekForTrainingDay(qwDay)){alert('Quick Write replacement is temporarily restricted on published weeks. Use Edit Workout Block for authenticated publishing; draft weeks still support Quick Write.');return;}
   if(!blocks.length){alert('No workout blocks to save.');return;}
+  if(typeof workoutDeliveryIssues!=='function'){alert('Workout validation unavailable. Reload before saving.');return;}
+  const quickWriteIssues=workoutDeliveryIssues(blocks,state.exercises);
+  if(quickWriteIssues.length){alert('Quick Write needs review before saving:\\n\\n'+quickWriteIssues.join('\\n'));return;}
   if(!confirm(`Replace this training day with ${blocks.length} Quick Write block${blocks.length===1?'':'s'}?`))return;
   const button=document.getElementById('saveQuickWrite');button.disabled=true;const original=button.textContent;button.textContent='Saving…';
   try{
@@ -863,7 +866,7 @@ function addTrainingDayForm(week){
 }
 async function saveNewDay(){
   const weekId=document.getElementById('newDayWeekId')?.value,week=byId(state.programmeWeeks,weekId);
-  if(week&&isPublishedWeek(week)&&!confirm('LIVE WEEK — adding this training day will be visible to athletes when they reload. Continue?'))return;
+  if(week&&isPublishedWeek(week)){alert('Published weeks cannot receive new training days through this direct edit. Prepare the day in a draft week and use the verified publication workflow.');return;}
   const row={programme_week_id:weekId,day_key:String(document.getElementById('newDayKey')?.value||'DAY').trim(),title:String(document.getElementById('newDayTitle')?.value||'Training Day').trim(),intensity:String(document.getElementById('newDayIntensity')?.value||'').trim(),duration:String(document.getElementById('newDayDuration')?.value||'').trim(),objective:String(document.getElementById('newDayObjective')?.value||'').trim(),sort_order:Number(document.getElementById('newDayOrder')?.value||1)};
   const {error}=await sb.from('training_days').insert(row);if(error){alert(error.message);return;}
   document.getElementById('modal').close();await load();
@@ -1075,6 +1078,9 @@ async function saveWorkoutBlock(){
     athlete_note:String(document.getElementById('blockAthleteNote').value||'').trim(),
     content
   };
+  if(typeof workoutDeliveryIssues!=='function'){alert('Workout validation is unavailable. Reload before saving.');return;}
+  const validationIssues=workoutDeliveryIssues([{...block,...update}],state.exercises);
+  if(validationIssues.length){alert('Workout needs review before saving:\\n\\n'+validationIssues.join('\\n'));return;}
   if(published){
     const titleChanged=update.title!==String(block.title||'');
     const noteChanged=update.athlete_note!==String(block.athlete_note||'');

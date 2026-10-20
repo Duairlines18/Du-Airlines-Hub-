@@ -26,7 +26,22 @@ function workoutDeliveryIssues(blocks, library) {
       if (!Number.isInteger(link?.item_index) || link.item_index < 0 || typeof items[link.item_index] !== 'string') {
         issues.push(label + ': demo points to a missing instruction row'); continue;
       }
-      if (!hasDemo(exercises.find(exercise => (exercise.name || exercise.title) === link.exercise))) issues.push(label + ': approved active demo missing for ' + link.exercise);
+      const matches = exercises.filter(exercise => (exercise.name || exercise.title) === link.exercise && exercise.active !== false);
+      if (matches.length !== 1) issues.push(label + ': ambiguous or unknown demo identity for ' + link.exercise);
+      else {
+        const selected = matches[0];
+        if (!hasDemo(selected)) issues.push(label + ': approved active demo missing for ' + link.exercise);
+        const storedUrl = String(link.video_url || '').trim();
+        const canonicalUrl = String(selected.video_url || selected.videoUrl || '').trim();
+        if (storedUrl && canonicalUrl && storedUrl !== canonicalUrl)
+          issues.push(label + ': stale or incorrect demo URL for ' + link.exercise);
+        // Text rows and structured prescriptions can have different ordering.
+        // Compare by index only when the block explicitly declares aligned rows.
+        const aligned = content.videoLinksAlignWithPrescriptions === true && items.length === prescriptions.length;
+        const expected = aligned ? prescriptions[link.item_index]?.exerciseCode : null;
+        if (expected && selected.code !== expected)
+          issues.push(label + ': demo does not match prescribed exercise code at row ' + (link.item_index + 1));
+      }
     }
     for (const [index, item] of items.entries()) {
       if (typeof item !== 'string' || !item.trim()) {issues.push(label + ': empty instruction row ' + (index + 1)); continue;}

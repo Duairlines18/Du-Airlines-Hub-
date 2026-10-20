@@ -1,0 +1,24 @@
+name: Protected publishing regression QA
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'qa/**'
+      - '.github/workflows/protected-publishing-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publishing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check qa/workout-validation.js
+          node --check qa/workout-validation.test.cjs
+      - name: Run protected publishing regression
+        run: node --test qa/workout-validation.test.cjs
