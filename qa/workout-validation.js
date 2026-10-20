@@ -35,7 +35,10 @@ function workoutDeliveryIssues(blocks, library) {
         const canonicalUrl = String(selected.video_url || selected.videoUrl || '').trim();
         if (storedUrl && canonicalUrl && storedUrl !== canonicalUrl)
           issues.push(label + ': stale or incorrect demo URL for ' + link.exercise);
-        const expected = prescriptions[link.item_index]?.exerciseCode;
+        // Text rows and structured prescriptions can have different ordering.
+        // Compare by index only when the block explicitly declares aligned rows.
+        const aligned = content.videoLinksAlignWithPrescriptions === true && items.length === prescriptions.length;
+        const expected = aligned ? prescriptions[link.item_index]?.exerciseCode : null;
         if (expected && selected.code !== expected)
           issues.push(label + ': demo does not match prescribed exercise code at row ' + (link.item_index + 1));
       }
