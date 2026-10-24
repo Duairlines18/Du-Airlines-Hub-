@@ -1231,7 +1231,7 @@ function codeForm(type){
   openModal(`<h2>Create ${label} Access Code</h2><p class="muted">Choose the cohort and a named person for an individual code, or enter a shared code of at least 12 characters. The readable code is shown only when you create it.</p>
   <div class="formgrid">
     <label class="wide">Cohort<select name="target_id" required>${options}</select></label>
-    <label class="wide">Named person (optional)<select name="person_id"><option value="">Shared cohort credential</option>${personOptions}</select><small>A named person receives a secure generated code. Existing codes for only that person are paused and their sessions revoked.</small></label>
+    <label class="wide">Named person (optional)<select name="person_id"><option value="">Shared cohort credential</option>${personOptions}</select><small>A named person receives a secure generated 8-character code. Existing codes for only that person are paused and their sessions revoked.</small></label>
     <label class="wide">Label<input name="label" required placeholder="Example: Saints Athlete Term 3"></label>
     <label class="wide">Access code<input name="raw_code" minlength="12" maxlength="128" autocomplete="off" placeholder="Example: SAINTS-ATHLETE-2026"></label>
     <label class="wide">Expiry (optional)<input name="expires_at" type="datetime-local"></label>
