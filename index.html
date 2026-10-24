@@ -1,4 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DU Airlines Admin</title>
+<script src="access-codes.js"></script>
 <script>
 window.DU_AIRLINES_ENV = {
   SUPABASE_URL: "https://hiktwkdfvlujszczthdu.supabase.co",
@@ -1205,7 +1206,7 @@ function renderFeedback(m){
 
 function renderAccess(m){
   const codes=[...state.accessCodes].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  m.innerHTML=`${loadWarning()}<h1>Access Management</h1><p class="muted">School/team athlete and staff access remains cohort-based. Private Athlete, Parent and Professional users continue to use personal accounts.</p>
+  m.innerHTML=`${loadWarning()}<h1>Access Management</h1><p class="muted">School access can identify one athlete or named coach within the assigned cohort. Existing shared codes remain available. Private Athlete, Parent and Professional users continue to use personal accounts.</p>
   <div class="grid">
     <button class="btn primary" data-code-type="cohort">New School / Team Athlete Code</button>
     <button class="btn ghost" data-code-type="staff">New Staff / Coach Code</button>
@@ -1224,12 +1225,15 @@ function codeForm(type){
   const rows=state.cohorts.filter(c=>c.status==='live');
   if(!rows.length){alert('Create or activate a cohort first, then come back here.');return;}
   const label=type==='staff'?'Staff / Coach':'School / Team Athlete';
+  const people=(type==='staff'?state.staff:state.athletes.filter(a=>a.athlete_type==='school')).filter(p=>p.access_status==='active');
+  const personOptions=people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.display_name||p.full_name)+'</option>').join('');
   const options=rows.map(x=>`<option value="${esc(x.id)}">${esc(x.name)} — Week ${x.current_week||1}</option>`).join('');
-  openModal(`<h2>Create ${label} Access Code</h2><p class="muted">Choose the cohort and create a code of at least 12 characters. The readable code is shown only when you create it.</p>
+  openModal(`<h2>Create ${label} Access Code</h2><p class="muted">Choose the cohort and a named person for an individual code, or enter a shared code of at least 12 characters. The readable code is shown only when you create it.</p>
   <div class="formgrid">
     <label class="wide">Cohort<select name="target_id" required>${options}</select></label>
+    <label class="wide">Named person (optional)<select name="person_id"><option value="">Shared cohort credential</option>${personOptions}</select><small>A named person receives a secure generated code. Existing codes for only that person are paused and their sessions revoked.</small></label>
     <label class="wide">Label<input name="label" required placeholder="Example: Saints Athlete Term 3"></label>
-    <label class="wide">Access code<input name="raw_code" required minlength="12" maxlength="128" autocomplete="off" placeholder="Example: SAINTS-ATHLETE-2026"></label>
+    <label class="wide">Access code<input name="raw_code" minlength="12" maxlength="128" autocomplete="off" placeholder="Example: SAINTS-ATHLETE-2026"></label>
     <label class="wide">Expiry (optional)<input name="expires_at" type="datetime-local"></label>
   </div>
   <input type="hidden" name="code_type" value="${type}">
@@ -1244,6 +1248,32 @@ async function saveAccessCode(){
   const raw=String(f.get('raw_code')||'').trim();
   const label=String(f.get('label')||'').trim();
   const expiry=String(f.get('expires_at')||'').trim();
+  const personId=String(f.get('person_id')||'');
+  if(personId){
+    const button=document.getElementById('saveAccessCode');button.disabled=true;
+    try{
+      const checked=async q=>{const {data,error}=await q;if(error)throw error;return data;};
+      const repository={
+        async validatePerson(kind,id,cohortId){
+          const c=await checked(sb.from('cohorts').select('id,status,organization_id,programme_id').eq('id',cohortId).maybeSingle());
+          if(!c||c.status!=='live')return false;
+          if(kind==='cohort'){const a=await checked(sb.from('athletes').select('id,cohort_id,organization_id,programme_id,athlete_type,access_status').eq('id',id).maybeSingle());return !!a&&a.athlete_type==='school'&&a.access_status==='active'&&a.cohort_id===c.id&&!!c.organization_id&&a.organization_id===c.organization_id&&(!a.programme_id||a.programme_id===c.programme_id);}
+          const coach=await checked(sb.from('staff_profiles').select('id,access_status').eq('id',id).maybeSingle());
+          const member=await checked(sb.from('staff_cohorts').select('staff_id').eq('staff_id',id).eq('cohort_id',c.id).maybeSingle());return coach?.access_status==='active'&&!!member;
+        },
+        listPersonCodes:(kind,id,cohortId)=>checked(sb.from('access_codes').select('id').eq('code_type',kind).eq(kind==='staff'?'staff_id':'athlete_id',id).eq('cohort_id',cohortId).neq('status','archived')),
+        insertPaused:row=>checked(sb.from('access_codes').insert(row).select('id').single()),
+        pauseCodes:ids=>checked(sb.from('access_codes').update({status:'paused'}).in('id',ids)),
+        revokeSessions:ids=>checked(sb.from('hub_sessions').update({revoked_at:new Date().toISOString()}).in('access_code_id',ids))
+      };
+      const issued=await DuSchoolAccessCodes.issueSchoolCode({repository,type,personId,cohortId:target,label,expiresAt:expiry||undefined});
+      document.getElementById('modal').close();await load();
+      openModal('<h2>Save this individual code once</h2><p>This code is paused. Activate it only after the identity-aware backend is released and verified. School distribution still requires Coach Du approval.</p><p>Expiry: '+esc(fmtDate(issued.expiresAt))+'</p><input readonly autocomplete="off" aria-label="New individual access code" value="'+esc(issued.raw)+'"><p>The readable code cannot be retrieved later. Regenerate for the same person if lost.</p><button value="cancel" class="btn primary">Done</button>');
+      const codeInput=document.querySelector('[aria-label="New individual access code"]');
+      document.getElementById('modal').addEventListener('close',()=>{if(codeInput){codeInput.value='';codeInput.removeAttribute('value');}},{once:true});
+    }catch(error){alert(error.message||'Unable to create individual code.');}finally{button.disabled=false;}
+    return;
+  }
   if(!target||!label||raw.length<12||raw.length>128){alert('Choose a cohort, add a label, and use a code between 12 and 128 characters.');return;}
   const bytes=new TextEncoder().encode(raw.toLowerCase());
   const digest=await crypto.subtle.digest('SHA-256',bytes);
