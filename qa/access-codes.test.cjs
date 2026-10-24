@@ -3,7 +3,7 @@ const {issueSchoolCode}=require('../access-codes.js');
 function fixture(){const rows=[],revoked=[];return {rows,revoked,repo:{validatePerson:async()=>true,insertPaused:async row=>{rows.push(row);return {id:'new-code'};},listPersonCodes:async()=>[{id:'old-code'}],pauseCodes:async ids=>revoked.push(['codes',ids]),revokeSessions:async ids=>revoked.push(['sessions',ids])}};}
 test('secure generation stores hash only, is individually bound, and remains paused',async()=>{
  const f=fixture(),x=await issueSchoolCode({repository:f.repo,type:'cohort',cohortId:'school',personId:'athlete',label:'Test'});
- assert.match(x.raw,/^[a-f0-9]{64}$/);assert.match(f.rows[0].code_hash,/^[a-f0-9]{64}$/);assert.notEqual(x.raw,f.rows[0].code_hash);
+ assert.match(x.raw,/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);assert.match(f.rows[0].code_hash,/^[a-f0-9]{64}$/);assert.notEqual(x.raw,f.rows[0].code_hash);assert.equal(f.rows[0].code_hash,require('node:crypto').createHash('sha256').update(x.raw.toLowerCase()).digest('hex'));
  assert.equal(f.rows[0].athlete_id,'athlete');assert.equal(f.rows[0].status,'paused');assert.equal(JSON.stringify(f.rows).includes(x.raw),false);
  assert.deepEqual(f.revoked,[['codes',['old-code']],['sessions',['old-code']]]);
  const y=await issueSchoolCode({repository:fixture().repo,type:'staff',cohortId:'school',personId:'coach',label:'Test'});assert.notEqual(y.raw,x.raw);
