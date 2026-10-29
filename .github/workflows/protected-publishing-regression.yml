@@ -21,4 +21,4 @@ jobs:
           node --check qa/workout-validation.js
           node --check qa/workout-validation.test.cjs
       - name: Run protected publishing regression
-        run: node --test qa/workout-validation.test.cjs
+        run: node --test qa/*.test.cjs
