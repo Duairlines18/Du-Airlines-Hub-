@@ -404,6 +404,15 @@ function cohortOptions(selected=''){
   return `<option value="">Not assigned</option>`+state.cohorts.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${esc(c.name)} — Week ${c.current_week||1}</option>`).join('');
 }
 
+function parentSetupReview(a){
+  if(!a.parent_user_id)return '';
+  const d=a.onboarding_data||{};
+  const show=value=>Array.isArray(value)?value.join(', '):String(value||'Not provided');
+  const safety={no:'No current concerns',yes:'Concern reported',already_discussed:'Already discussed with Coach Du'};
+  const rows=[['Parent',[a.parent_first_name,a.parent_last_name].filter(Boolean).join(' ')],['Parent email',a.parent_email],['Priorities',d.developmentPriorities],['Performance Hub frequency',d.hubFrequency||d.weeklyAvailability],['Training location',d.trainingLocations||d.trainingEnvironment],['Equipment',d.equipment],['Safety considerations',safety[d.safetyStatus]||'Review previous information below'],['Safety details / previously recorded',d.safetyDetails],['Previous onboarding notes',d.considerations],['Age / sport',[d.ageBand,d.sportPathway].filter(Boolean).join(' · ')]];
+  return '<section class="card"><h3>Athlete Setup</h3><p class="muted">'+(a.onboarding_complete?'Completed':'Draft / not completed')+'</p><dl>'+rows.map(([label,value])=>'<dt><strong>'+esc(label)+'</strong></dt><dd style="white-space:pre-wrap;overflow-wrap:anywhere;margin:4px 0 12px">'+esc(show(value))+'</dd>').join('')+'</dl></section>';
+}
+
 function athleteForm(a={}){
   openModal(`<h2>Manage Athlete</h2>
   <p class="muted">For a private or parent-managed athlete, assign a direct programme and current week here. For a school athlete, leave Direct Programme blank and use the cohort.</p>
@@ -415,6 +424,7 @@ function athleteForm(a={}){
     <label>Current week<input name="current_week" type="number" min="1" max="52" value="${a.current_week||athleteCurrentWeek(a)||1}"></label>
     <label class="wide">Internal coach note<textarea name="coach_note">${esc(a.coach_note||'')}</textarea></label>
   </div>
+  ${parentSetupReview(a)}
   <input type="hidden" name="id" value="${a.id||''}">
   <div class="notice">Access: ${esc(a.access_status||'pending')} · Reason: ${esc(a.access_reason||'not set')} · Payment: ${esc(a.payment_status||'pending')}</div>
   <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveAthlete">Save Athlete</button></div>`);
@@ -1325,12 +1335,12 @@ async function changeAccountAccess(kind,id,action){
   if(!row)return;
   let update={};
   if(action==='activate'){
-    if(!row.cohort_id){alert('Assign a cohort before activating access.');return;}
+    if(!row.cohort_id&&!(kind==='athlete'&&row.programme_id)){alert('Assign a programme or cohort before activating access.');return;}
     update={access_status:'active',access_reason:'complimentary',payment_status:'not_required',paid:false};
   }else if(action==='pause'){
     update={access_status:'paused'};
   }else if(action==='resume'){
-    if(!row.cohort_id||!row.access_reason||!row.payment_status){alert('This record is missing its entitlement details. Use Activate Complimentary instead of forcing access.');return;}
+    if((!row.cohort_id&&!(kind==='athlete'&&row.programme_id))||!row.access_reason||!row.payment_status){alert('This record is missing its entitlement details. Use Activate Complimentary instead of forcing access.');return;}
     update={access_status:'active'};
   }else return;
   const {error}=await sb.from(table).update(update).eq('id',id);
