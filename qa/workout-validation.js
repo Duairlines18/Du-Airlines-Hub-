@@ -49,6 +49,15 @@ function workoutDeliveryIssues(blocks, library) {
       if (!Number.isInteger(link?.item_index) || link.item_index < 0 || typeof items[link.item_index] !== 'string') {
         issues.push(label + ': demo points to a missing instruction row'); continue;
       }
+      if (Object.prototype.hasOwnProperty.call(link,'reviewed_item') && link.reviewed_item !== items[link.item_index])
+        issues.push(label + ': reviewed demo is bound to a different instruction row');
+      if (link.no_demo === true) {
+        const expected = content.videoLinksAlignWithPrescriptions === true ? prescriptions[link.item_index]?.exerciseCode : null;
+        if (link.reviewed_item !== items[link.item_index] || link.exerciseCode || expected
+          || links.some(other=>other!==link && other.item_index===link.item_index && other.no_demo!==true))
+          issues.push(label + ': reviewed demo exclusion conflicts with its instruction or selection');
+        continue;
+      }
       const matches = exercises.filter(exercise => exercise.active !== false && (link.exerciseCode ? exercise.code === link.exerciseCode : (exercise.name || exercise.title) === link.exercise));
       if (matches.length !== 1) issues.push(label + ': ambiguous or unknown demo identity for ' + link.exercise);
       else {
@@ -77,7 +86,7 @@ function workoutDeliveryIssues(blocks, library) {
         return name && (text.startsWith(' ' + name + ' ') || new RegExp('^\\s*\\d+(?:\\s+[x×]\\s*\\d+)?\\s+' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(item));
       });
       if (movement && !prescriptions.length && !links.some(link => link.item_index === index && (link.exerciseCode ? exercises.some(exercise => exercise.active !== false && exercise.code === link.exerciseCode && normalize(exercise.name || exercise.title) === normalize(movement.name || movement.title)) : link.exercise === (movement.name || movement.title)))) issues.push(label + ': reviewed demo selection missing at row ' + (index + 1));
-      if (content.requiresDemo === true && !links.some(link => link.item_index === index)) issues.push(label + ': required demo missing at row ' + (index + 1));
+      if (content.requiresDemo === true && !links.some(link => link.item_index === index && link.no_demo !== true)) issues.push(label + ': required demo missing at row ' + (index + 1));
     }
   }
   return [...new Set(issues)];
