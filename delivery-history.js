@@ -53,7 +53,7 @@ function mount({root,client,subjectType,subjectId,label}){
   if(!UUID.test(event.event_id)||seen.has(event.event_id))return;seen.add(event.event_id);
   const detail=el('details',undefined,'card'),head=el('summary',sourceTitle(event)+' · '+date(event.recorded_at));
   const body=el('div');let busy=false,loaded=false;
-  detail.append(head,el('p',event.actor_role==='service_role'?'Service operation · no verified individual attribution':event.actor_role==='authenticated'&&UUID.test(event.actor_user_id||'')?'Authenticated admin account':'Database operation · individual not recorded','muted'),body);list.append(detail);
+  detail.append(head,el('p',event.actor_role==='service_role'?'Service operation · no verified individual attribution':event.actor_role==='authenticated'&&UUID.test(event.actor_user_id||'')?'Authenticated account operation':'Database operation · individual not recorded','muted'),body);list.append(detail);
   async function loadDetails(){
    if(busy||loaded||!live())return;busy=true;body.replaceChildren(el('p','Loading change…','muted'));
    try{const data=await rpc({p_event_id:event.event_id});if(!live())return;const row=data.events[0];if(data.events.length!==1||row.event_id!==event.event_id)throw Error('Mismatched history detail');body.replaceChildren(snapshotView(row.before_snapshot,'Before'),snapshotView(row.after_snapshot,'After'));loaded=true;}
