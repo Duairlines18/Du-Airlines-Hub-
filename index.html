@@ -46,6 +46,7 @@ window.DU_AIRLINES_ENV = {
 <section id="app" class="hidden"><header class="top"><div class="brand">DU AIRLINES <span>ADMIN</span></div><div class="global-search-wrap"><input id="globalSearch" class="global-search" placeholder="Search athlete, school, programme or exercise…"><div id="globalSearchResults" class="global-search-results hidden"></div></div><button id="logout" class="btn ghost">Log out</button></header><div class="layout"><nav id="nav"></nav><main id="main"></main></div></section>
 <dialog id="modal"><form method="dialog" class="modal" id="modalForm"></form></dialog>
 <script src="qa/workout-validation.js"></script>
+<script src="workout-demo-review.js"></script>
 <script src="delivery-history.js?v=20261106-history"></script>
 <script>
 
@@ -911,8 +912,13 @@ function blockEditor(block){
     <label class="wide">Athlete note<textarea id="blockAthleteNote" rows="3">${esc(block.athlete_note||'')}</textarea></label>
   </div>
   <input type="hidden" id="editBlockId" value="${block.id}">
+  <section id="blockDemoReview"></section>
   <div class="notice">The original JSON structure is preserved; only the fields shown above are changed.</div>
   <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveWorkoutBlock">Save Workout Update</button></div>`);
+  const itemsInput=document.getElementById('blockItems');
+  if(itemsInput){
+    blockDemoReview=typeof WorkoutDemoReview!=='undefined'?WorkoutDemoReview.mount({root:document.getElementById('blockDemoReview'),itemsInput,original:content,library:state.exercises}):null;
+  }
 }
 
 function dayEditor(day){
@@ -1063,7 +1069,7 @@ async function saveWorkoutBlock(){
   if(!block)return;
   const editDay=byId(state.trainingDays,block.training_day_id);
   const published=!!liveWeekForTrainingDay(editDay);
-  const content={...(block.content||{})};
+  let content={...(block.content||{})};
   content.focus=String(document.getElementById('blockFocus').value||'').trim();
   content.requirement=String(document.getElementById('blockRequirement').value||'').trim();
   const why=String(document.getElementById('blockWhy').value||'').trim();
@@ -1092,7 +1098,11 @@ async function saveWorkoutBlock(){
     }
   }else{
     const itemsBox=document.getElementById('blockItems');
-    if(itemsBox)content.items=String(itemsBox.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+    if(itemsBox){
+      content.items=String(itemsBox.value||'').split('\n').map(x=>x.trim()).filter(Boolean);
+      if(!blockDemoReview){alert('Demo review is unavailable. Reload before saving.');return;}
+      try{content=blockDemoReview.getContent(content);}catch(error){alert(error.message);return;}
+    }
   }
 
   const update={
@@ -1325,7 +1335,9 @@ function renderSettings(m){
   <button class="btn ghost" id="passwordReset">Send password reset email</button></div>`;
 }
 
+let blockDemoReview=null;
 function openModal(html){
+  blockDemoReview?.destroy();blockDemoReview=null;
   const d=document.getElementById('modal'),f=document.getElementById('modalForm');
   f.innerHTML=html;
   d.showModal();

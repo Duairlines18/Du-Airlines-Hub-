@@ -13,3 +13,6 @@ test('explicit code remains valid regardless of duplicate-name library ordering'
 test('encoded query names cannot disguise a different first video',()=>assert.ok(check(block({video_url:'https://www.youtube.com/watch?%76=wrongvideo1&v=abcdefghijk'})).some(x=>/stale|incorrect/.test(x))));
 test('encoded equivalent video IDs pass publication',()=>assert.equal(check(block({video_url:'https://www.youtube.com/watch?v=%61bcdefghijk'})).length,0));
 test('unrecognized saved URL cannot pass against an ID-only canonical demo',()=>assert.ok(check(block({video_url:'https://example.com/otherclip12'}),[{code:'BR',name:'Bridge',active:true,video_id:'abcdefghijk'}]).some(x=>/stale|incorrect/.test(x))));
+test('stale reviewed instruction binding blocks publication',()=>assert.ok(check(block({exerciseCode:'BR',reviewed_item:'Different instruction'})).some(x=>/instruction/.test(x))));
+test('bound no-demo notes pass preflight without inventing a movement',()=>assert.equal(check([{content:{items:['Rest after Bridge'],video_links:[{item_index:0,no_demo:true,reviewed_item:'Rest after Bridge'}]}}]).length,0));
+test('no-demo exclusion cannot satisfy an explicitly required demonstration',()=>assert.ok(check([{content:{items:['Rest after Bridge'],requiresDemo:true,video_links:[{item_index:0,no_demo:true,reviewed_item:'Rest after Bridge'}]}}]).some(x=>/required demo/.test(x))));

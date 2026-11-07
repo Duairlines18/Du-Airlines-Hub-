@@ -4,6 +4,7 @@ on:
     paths:
       - 'index.html'
       - 'delivery-history.js'
+      - 'workout-demo-review.js'
       - 'qa/**'
       - '.github/workflows/protected-publishing-regression.yml'
   workflow_dispatch:
@@ -27,3 +28,18 @@ jobs:
         run: node --test qa/*.test.cjs
         env:
           NODE_PATH: /tmp/du-admin-qa/node_modules
+  demo-review-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned browser QA dependencies
+        run: |
+          npm install --prefix /tmp/du-demo-browser-qa --no-save playwright@1.62.1
+          /tmp/du-demo-browser-qa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify demo review and actual draft save at mobile and desktop widths
+        run: node qa/workout-demo-review.browser.cjs
+        env:
+          NODE_PATH: /tmp/du-demo-browser-qa/node_modules
