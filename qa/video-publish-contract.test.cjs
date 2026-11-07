@@ -1,0 +1,15 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');const ctx={URL};vm.createContext(ctx);vm.runInContext(fs.readFileSync('qa/workout-validation.js','utf8'),ctx);
+const library=[{code:'BR',name:'Bridge',active:true,video_url:'https://www.youtube.com/shorts/abcdefghijk'}];
+const block=link=>[{content:{items:['Bridge — 2 x 8'],video_links:[{item_index:0,exercise:'Bridge',...link}]}}];
+const check=(links,ex=library)=>ctx.workoutDeliveryIssues(links,ex);
+test('exact reviewed code disambiguates duplicate names',()=>assert.equal(check(block({exerciseCode:'BR'}),[...library,{...library[0],code:'OTHER'}]).length,0));
+test('unknown explicit code cannot fall back to a matching name',()=>assert.ok(check(block({exerciseCode:'MISSING'})).some(x=>/identity|missing/.test(x))));
+test('canonical watch and shorts URLs for the same video do not block publication',()=>assert.equal(check(block({video_url:'https://www.youtube.com/watch?v=abcdefghijk'})).length,0));
+test('different video identity blocks publication',()=>assert.ok(check(block({video_url:'https://youtu.be/wrongvideo1'})).some(x=>/stale|incorrect/.test(x))));
+test('ambiguous legacy name still requires review',()=>assert.ok(check(block({}),[...library,{...library[0],code:'OTHER'}]).some(x=>/ambiguous/.test(x))));
+test('preflight does not rewrite workouts, library or saved demo URLs',()=>{const b=block({exerciseCode:'BR',video_url:'https://youtu.be/wrongvideo1'}),before=JSON.stringify({b,library});check(b);assert.equal(JSON.stringify({b,library}),before);});
+test('duplicate video query parameters cannot disguise a different first video',()=>assert.ok(check(block({video_url:'https://www.youtube.com/watch?v=wrongvideo1&v=abcdefghijk'})).some(x=>/stale|incorrect/.test(x))));
+test('explicit code remains valid regardless of duplicate-name library ordering',()=>assert.equal(check(block({exerciseCode:'BR'}),[{...library[0],code:'OTHER'},...library]).length,0));
+test('encoded query names cannot disguise a different first video',()=>assert.ok(check(block({video_url:'https://www.youtube.com/watch?%76=wrongvideo1&v=abcdefghijk'})).some(x=>/stale|incorrect/.test(x))));
+test('encoded equivalent video IDs pass publication',()=>assert.equal(check(block({video_url:'https://www.youtube.com/watch?v=%61bcdefghijk'})).length,0));
+test('unrecognized saved URL cannot pass against an ID-only canonical demo',()=>assert.ok(check(block({video_url:'https://example.com/otherclip12'}),[{code:'BR',name:'Bridge',active:true,video_id:'abcdefghijk'}]).some(x=>/stale|incorrect/.test(x))));
