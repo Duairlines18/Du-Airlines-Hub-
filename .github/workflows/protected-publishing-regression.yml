@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'index.html'
+      - 'delivery-history.js'
       - 'qa/**'
       - '.github/workflows/protected-publishing-regression.yml'
   workflow_dispatch:
@@ -20,5 +21,9 @@ jobs:
         run: |
           node --check qa/workout-validation.js
           node --check qa/workout-validation.test.cjs
+      - name: Install pinned DOM test dependency
+        run: npm install --prefix /tmp/du-admin-qa --no-save jsdom@27.0.1
       - name: Run protected publishing regression
         run: node --test qa/*.test.cjs
+        env:
+          NODE_PATH: /tmp/du-admin-qa/node_modules
