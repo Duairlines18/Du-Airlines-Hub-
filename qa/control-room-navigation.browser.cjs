@@ -16,6 +16,18 @@ const fixtures={
     {id:'programme-private',name:'Private Foundation',duration_weeks:5},
     {id:'programme-school',name:'School Performance',duration_weeks:4}
   ],
+  exercises:[{id:'exercise-a',code:'a-march',name:'A-March',active:true,video_url:'https://example.com/a-march.mp4'}],
+  programme_weeks:[
+    {id:'week-private-5',programme_id:'programme-private',week_number:5,status:'live',verification_status:'verified',published_at:'2026-11-01T00:00:00Z',phase:'Movement Foundation'}
+  ],
+  training_days:[
+    {id:'day-private-mon',programme_week_id:'week-private-5',day_key:'MONDAY',title:'Acceleration Mechanics',sort_order:1,intensity:'Easy'},
+    {id:'day-private-tue',programme_week_id:'week-private-5',day_key:'TUESDAY',title:'Strength Foundations',sort_order:2}
+  ],
+  session_blocks:[
+    {id:'block-private-warm',training_day_id:'day-private-mon',title:'Warm Up',sort_order:1,block_type:'activation',content:{prescriptions:[{exerciseCode:'a-march',dosage:'2 x 20 m',rest:'Walk back'}]}},
+    {id:'block-private-strength',training_day_id:'day-private-tue',title:'Strength',sort_order:1,block_type:'strength',content:{items:['Split Squat — 2 x 6 each side']}}
+  ],
   feedback:[
     {id:'feedback-one',athlete_id:'athlete-private',cohort_id:'cohort-private',week_number:4,feedback_type:'athlete_weekly',created_at:'2026-11-08T13:00:00Z',reviewed_at:null,status:'no_change',payload:{note:'Training felt good',pain:'None'}}
   ]
@@ -71,6 +83,21 @@ function pageSource(){
    assert.equal(await page.locator('#athleteList .v3-person').count(),1);
    await page.locator('[data-open-athlete="athlete-private"]').click();
    await page.getByRole('heading',{name:'Takunda Mutizwa'}).waitFor();
+   assert.equal(await page.locator('details.v3-day-collapse').count(),2,'two compact days');
+   assert.equal(await page.locator('details.v3-day-collapse[open]').count(),0,'days default collapsed');
+   await page.locator('details.v3-day-collapse').first().locator('summary.v3-day-summary').click();
+   assert.equal(await page.locator('details.v3-day-collapse[open]').count(),1);
+   assert.equal(await page.locator('details.v3-block-collapse[open]').count(),0,'blocks default collapsed');
+   await page.locator('details.v3-block-collapse').first().locator('summary.v3-block-summary').click();
+   assert.equal(await page.locator('details.v3-block-collapse[open]').count(),1);
+   assert.ok((await page.locator('details.v3-block-collapse').first().innerText()).includes('A-March'));
+   assert.equal(await page.locator('details.v3-block-collapse').first().locator('[data-remove-prescription]').count(),1,'prescription editing preserved');
+   await page.locator('[data-day-visibility="collapse"]').click();
+   assert.equal(await page.locator('details.v3-day-collapse[open]').count(),0);
+   await page.locator('[data-day-visibility="expand"]').click();
+   assert.equal(await page.locator('details.v3-day-collapse[open]').count(),2);
+   assert.equal(await page.locator('details.v3-block-collapse[open]').count(),2);
+   assert.equal(await page.locator('[data-copy-week]').count(),1,'existing safe same-programme copy action preserved');
    await page.locator('[data-load-crm="athlete:athlete-private"]').click();
    await page.getByText('Synthetic coach decision for QA only').waitFor();
    await page.locator('#nav [data-page="athletes"]').click();
