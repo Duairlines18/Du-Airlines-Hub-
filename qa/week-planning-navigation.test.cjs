@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
-const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261108235900_admin_prepare_future_week_drafts.sql'),'utf8');
+const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261108232737_admin_prepare_future_week_drafts.sql'),'utf8');
 const js=source.split('<script src="qa/workout-validation.js"></script>\n<script>')[1]?.split('</script>')[0];
 test('Control Room JavaScript still compiles',()=>{assert.ok(js);new Function(js);});
 test('week publishing opens a review and writing modal instead of an immediate confirm',()=>{
