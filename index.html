@@ -39,6 +39,47 @@ window.DU_AIRLINES_ENV = {
 
 
 @media(max-width:850px){.v3-person,.v3-attention{grid-template-columns:1fr}.system-grid{grid-template-columns:1fr 1fr}}@media(max-width:520px){.system-grid{grid-template-columns:1fr}.v3-hero{display:block}.v3-actions{margin-top:12px}}
+/* Feedback and roster operations: responsive, accessible, no data-model changes */
+.metric-action{display:flex;flex-direction:column;align-items:flex-start;text-align:left;cursor:pointer;color:var(--cream);font:inherit}
+.metric-action strong{font-size:28px;color:var(--gold2)}.metric-action small{color:var(--gold2);margin-top:10px}
+.metric-action:focus-visible,.v3-tab:focus-visible,.feedback-person summary:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+.roster-filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}
+.feedback-group-list{display:grid;gap:12px;margin-top:16px}
+.feedback-person{border:1px solid var(--hair);border-radius:14px;background:var(--panel);overflow:hidden}
+.feedback-person-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:17px;list-style:none}
+.feedback-person-summary::-webkit-details-marker{display:none}
+.feedback-person-summary span:first-child{min-width:0}.feedback-person-summary strong{display:block;font-size:17px;overflow-wrap:anywhere}
+.feedback-person-summary small{display:block;color:var(--sage);margin-top:5px}
+.feedback-expand{color:var(--gold2);white-space:nowrap}
+.feedback-history{padding:0 16px 16px}.feedback-record{border-top:1px solid var(--hair);padding:16px 0}
+.feedback-record:first-child{border-top:1px solid var(--hair)}
+.feedback-record-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.feedback-record p{line-height:1.55;color:var(--sage);overflow-wrap:anywhere}
+.feedback-record .feedback-note{margin:8px 0 14px}.feedback-note summary{cursor:pointer}
+.feedback-note textarea{width:100%;max-width:100%;margin:10px 0}
+.v3-person-actions{flex-wrap:wrap}.v3-person-actions .btn{white-space:normal}
+@media(max-width:850px){
+  .top{padding:10px 12px;gap:10px}
+  .top .global-search-wrap{flex:1;min-width:0;margin:0}
+  .top .global-search{width:100%;min-width:0;text-overflow:ellipsis}
+  .top #logout{flex-shrink:0;padding:9px 12px}
+  nav{scrollbar-width:thin;scroll-padding:12px}
+  nav button{padding:10px 12px}
+  .v3-person{gap:10px}
+}
+@media(max-width:520px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .grid .metric{min-width:0;padding:12px}
+  .grid .metric strong{font-size:25px}
+  .grid .metric span{font-size:12px}
+  .v3-person{padding:14px}
+  .v3-person-actions{gap:8px}
+  .v3-person-actions .btn{font-size:13px;padding:9px 11px}
+  .feedback-person-summary{padding:13px}
+  .feedback-history{padding:0 12px 12px}
+  .feedback-record-head .pill{max-width:100%;white-space:normal}
+  main{padding:14px}
+}
 </style></head><body>
 <section id="login" class="login"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Private Control Room</h1><p class="muted">Secure founder access. This page is never linked from the public website.</p><form id="loginForm"><label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required><p id="loginErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Log in</button><div class="login-links"><button type="button" class="linkbtn" id="forgotPassword">Forgot password?</button></div></form><div id="setupNotice" class="notice hidden">Supabase is not configured yet. Add your project values to <span class="code">config.js</span>.</div></div></section>
 <section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
@@ -1426,8 +1467,17 @@ document.addEventListener('click',async e=>{
     if(type==='programme'){state.page='programmes';render();return;}
     if(type==='exercise'){state.page='library';render();return;}
   }
+  const rosterNav=e.target.closest('[data-roster-filter]');
+  if(rosterNav){state.athleteView=rosterNav.dataset.rosterFilter||'all';state.page='athletes';render();return;}
+  const athleteFilter=e.target.closest('[data-athlete-filter]');
+  if(athleteFilter){state.athleteView=athleteFilter.dataset.athleteFilter||'all';render();return;}
+  const athleteFeedback=e.target.closest('[data-feedback-athlete]');
+  if(athleteFeedback){state.feedbackFocus='athlete:'+athleteFeedback.dataset.feedbackAthlete;state.page='feedback';render();return;}
+  const clearFeedback=e.target.closest('[data-feedback-clear]');
+  if(clearFeedback){state.feedbackFocus=null;render();return;}
+
   const p=e.target.closest('[data-page]');
-  if(p){state.page=p.dataset.page;render();return;}
+  if(p){state.page=p.dataset.page;if(state.page==='feedback')state.feedbackFocus=null;render();return;}
 
   const add=e.target.closest('[data-add]');
   if(add){
