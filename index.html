@@ -331,7 +331,7 @@ function weeklyCommandRows(){
     const next=last&&row.week>=last?{key:'ending',label:'Block ends this week',issue:'Plan the next block'}:weeklyPlanStatus(row.programmeId,row.week+1);
     return {...row,current,next};
   }).sort((a,b)=>{
-    const rank=x=>({missing:0,incomplete:1,unassigned:2,ending:3,draft:4,published:5})[x.next.key]??6;
+    const rank=x=>({missing:0,incomplete:1,unassigned:2,ending:3,draft:4,published:5})[x.key]??6;
     return rank(a.next)-rank(b.next)||a.kind.localeCompare(b.kind)||a.name.localeCompare(b.name);
   });
 }
