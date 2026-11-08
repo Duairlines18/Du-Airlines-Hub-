@@ -64,6 +64,17 @@ function pageSource(){
    await page.getByRole('heading',{name:'Schools'}).waitFor();
    assert.ok((await page.locator('#main').innerText()).includes("St George's College"));
    assert.ok(!(await page.locator('#main').innerText()).includes('Takunda Mutizwa'));
+   await page.locator('#main [data-open-cohort="cohort-school"]').click();
+   await page.getByRole('heading',{name:"St George's College"}).waitFor();
+   await page.locator('[data-workspace-tab="athletes"]').click();
+   assert.equal(await page.locator('[data-open-athlete="athlete-school"]').count(),1);
+   await page.locator('[data-open-athlete="athlete-school"]').click();
+   await page.getByRole('heading',{name:'School Athlete QA'}).waitFor();
+   await page.locator('[data-workspace-tab="feedback"]').first().click();
+   assert.ok((await page.locator('#main').innerText()).includes('School Athlete QA Feedback'));
+   await page.locator('[data-workspace-current]').click();
+   assert.equal(await page.locator('[data-workspace-tab="programme"].active').count(),1);
+   await page.locator('#nav [data-page="cohorts"]').click();
    await page.locator('#main [data-page="cohort-programmes"]').click();
    await page.getByRole('heading',{name:'Programme Groups'}).waitFor();
    assert.ok((await page.locator('#main').innerText()).includes('Takunda Mutizwa'));
