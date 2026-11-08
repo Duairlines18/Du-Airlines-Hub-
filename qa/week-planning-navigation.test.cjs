@@ -13,6 +13,8 @@ test('week publishing opens a review and writing modal instead of an immediate c
  assert.ok(source.includes('This is an older week. Publishing it could move the current programme backward'));
  assert.ok(source.includes("if(isPublishedWeek(week)){alert('This week is already published."));
  assert.ok(source.includes("sb.rpc('admin_publish_programme_week'"));
+ assert.ok(source.includes("isSchoolAthlete(d.account)&&d.cohort?.organization_id"));
+ assert.ok(source.includes("return {type:'cohort',id:d.cohort.id,label:d.cohort.name+' (school programme)'"));
  assert.ok(!source.includes("Publish Week ${week.week_number} to ${audience}?\\n\\n"));
 });
 test('future 1 2 or 4 draft weeks use non-destructive admin-only RPC',()=>{
