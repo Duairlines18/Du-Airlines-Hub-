@@ -22,6 +22,9 @@ const fixtures={
 };
 const stub=`<script>
 window.supabase={createClient:()=>({
+ functions:{invoke:async(slug,options)=>({error:null,data:options.body.type==='athlete'?
+ {linked:true,kind:'athlete',recordId:'recNX9lsjD4zFX8OP',programme:'Synthetic Programme',crmWeek:5,deliveryStatus:'LIVE',nextDecision:'Synthetic coach decision for QA only'}:
+ {linked:true,kind:'school',recordId:'recHo7TzaQTgXRxCi',account:'Synthetic School Account',nextAction:'Synthetic follow-up for QA only'}})},
  auth:{getSession:async()=>({data:{session:{user:{id:'qa-admin'}}}}),
  getUser:async()=>({data:{user:{id:'qa-admin'}},error:null}),
  onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},
@@ -66,6 +69,12 @@ function pageSource(){
    assert.equal(await page.locator('#athleteList .v3-person').count(),2);
    await page.locator('[data-athlete-filter="private"]').click();
    assert.equal(await page.locator('#athleteList .v3-person').count(),1);
+   await page.locator('[data-open-athlete="athlete-private"]').click();
+   await page.getByRole('heading',{name:'Takunda Mutizwa'}).waitFor();
+   await page.locator('[data-load-crm="athlete:athlete-private"]').click();
+   await page.getByText('Synthetic coach decision for QA only').waitFor();
+   await page.locator('#nav [data-page="athletes"]').click();
+   await page.getByRole('heading',{name:'Athletes'}).waitFor();
    await page.locator('[data-feedback-athlete="athlete-private"]').click();
    await page.getByRole('heading',{name:'Athlete Feedback'}).waitFor();
    assert.equal(await page.locator('.feedback-person[open]').count(),1);
@@ -77,6 +86,8 @@ function pageSource(){
    assert.ok(!(await page.locator('#main').innerText()).includes('Takunda Mutizwa'));
    await page.locator('#main [data-open-cohort="cohort-school"]').click();
    await page.getByRole('heading',{name:"St George's College"}).waitFor();
+   await page.locator('[data-load-crm="school:cohort-school"]').click();
+   await page.getByText('Synthetic follow-up for QA only').waitFor();
    await page.locator('[data-workspace-tab="athletes"]').click();
    assert.equal(await page.locator('[data-open-athlete="athlete-school"]').count(),1);
    await page.locator('[data-open-athlete="athlete-school"]').click();
