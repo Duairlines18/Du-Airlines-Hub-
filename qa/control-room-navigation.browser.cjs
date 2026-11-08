@@ -35,6 +35,13 @@ const fixtures={
 };
 const stub=`<script>
 window.supabase={createClient:()=>({
+ rpc:async(name,args)=>{
+  if(name!=='admin_prepare_future_week_drafts')return {error:{message:'Unexpected QA RPC'}};
+  const next=args.p_after_week+1;
+  const current=window.__qaFixtures.programme_weeks.find(w=>w.programme_id===args.p_programme_id&&w.week_number===next);
+  if(!current)window.__qaFixtures.programme_weeks.push({id:'week-private-'+next,programme_id:args.p_programme_id,week_number:next,status:'draft',verification_status:'needs_verification',published_at:null,phase:'Future training week'});
+  return {data:{ok:true,status:'draft',published:false,created:current?[]:[next],existing:current?[next]:[]},error:null};
+ },
  functions:{invoke:async(slug,options)=>({error:null,data:options.body.type==='athlete'?
  {linked:true,kind:'athlete',recordId:'recNX9lsjD4zFX8OP',programme:'Synthetic Programme',crmWeek:5,deliveryStatus:'LIVE',nextDecision:'Synthetic coach decision for QA only'}:
  {linked:true,kind:'school',recordId:'recHo7TzaQTgXRxCi',account:'Synthetic School Account',nextAction:'Synthetic follow-up for QA only'}})},
@@ -138,6 +145,11 @@ function pageSource(){
    await page.locator('details.weekly-advanced > summary').click();
    await page.locator('[data-load-crm="athlete:athlete-private"]').click();
    await page.getByText('Synthetic coach decision for QA only').waitFor();
+   await page.locator('[data-write-next-week]').click();
+   await page.getByRole('heading',{name:'Future training week'}).waitFor();
+   assert.ok((await page.locator('.weekly-writing-home').innerText()).includes('Next Week 6: Needs editing'));
+   assert.equal(await page.locator('[data-publish-week="week-private-6"]').count(),1,'draft week is ready to write and review, not auto published');
+   assert.equal(await page.locator('[data-write-next-week]').count(),1,'single action persists after draft creation');
    await page.locator('#nav [data-page="athletes"]').click();
    await page.getByRole('heading',{name:'Athletes'}).waitFor();
    await page.locator('[data-go-back]').first().click();
