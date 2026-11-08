@@ -18,6 +18,7 @@ const fixtures={
   ],
   exercises:[{id:'exercise-a',code:'a-march',name:'A-March',active:true,video_url:'https://example.com/a-march.mp4'}],
   programme_weeks:[
+    {id:'week-private-4',programme_id:'programme-private',week_number:4,status:'draft',verification_status:'needs_verification',published_at:null,phase:'Future Work',weekly_objective:'Plan the next focus'},
     {id:'week-private-5',programme_id:'programme-private',week_number:5,status:'live',verification_status:'verified',published_at:'2026-11-01T00:00:00Z',phase:'Movement Foundation'}
   ],
   training_days:[
@@ -97,9 +98,28 @@ function pageSource(){
    await page.locator('[data-day-visibility="expand"]').click();
    assert.equal(await page.locator('details.v3-day-collapse[open]').count(),2);
    assert.equal(await page.locator('details.v3-block-collapse[open]').count(),2);
-   assert.equal(await page.locator('[data-copy-week]').count(),1,'existing safe same-programme copy action preserved');
+   assert.equal(await page.locator('[data-copy-week]').count(),0,'obsolete same-programme prompt is removed');
+   await page.locator('[data-select-week="week-private-4"]').click();
+   await page.locator('[data-publish-week="week-private-4"]').click();
+   await page.getByRole('heading',{name:'Week 4 · Plan & Publish'}).waitFor();
+   assert.equal(await page.locator('[data-week-plan-field]').count(),5,'weekly objective and coaching focus fields');
+   assert.equal(await page.locator('[data-save-week-plan]').count(),1,'draft notes can be saved separately');
+   assert.equal(await page.locator('[data-commit-publish-week]').count(),1,'publish requires an explicit separate action');
+   await page.locator('[data-close-modal]').click();
+   await page.locator('[data-select-week="week-private-5"]').click();
+   await page.locator('[data-publish-week="week-private-5"]').click();
+   await page.getByRole('heading',{name:'Week 5 · Plan & Publish'}).waitFor();
+   assert.equal(await page.locator('[data-commit-publish-week]').count(),0,'already published week cannot be republished');
+   await page.locator('[data-close-modal]').click();
+   await page.locator('[data-prepare-drafts="programme-private"]').click();
+   await page.getByRole('heading',{name:'Prepare future weeks'}).waitFor();
+   await page.locator('#futureDraftCount').selectOption('4');
+   assert.equal(await page.locator('#futureDraftCount').inputValue(),'4','four future drafts can be planned');
+   await page.locator('[data-close-modal]').click();
    await page.locator('[data-cross-copy-week="week-private-5"]').click();
-   await page.locator('#copyToProgramme').selectOption('school:cohort-school');
+   await page.locator('#copyDestinationSearch').fill('st george');
+   await page.locator('[data-choose-copy-destination="school:cohort-school"]').click();
+   assert.equal(await page.locator('#copyToProgramme').inputValue(),'school:cohort-school');
    await page.locator('#copyToWeek').fill('1');
    await page.locator('[data-preview-cross-copy="week-private-5"]').click();
    await page.getByText('Copy preview: St George\'s College · Week 1').waitFor();
@@ -113,6 +133,10 @@ function pageSource(){
    await page.locator('#modal').evaluate(el=>el.close());
    await page.locator('[data-load-crm="athlete:athlete-private"]').click();
    await page.getByText('Synthetic coach decision for QA only').waitFor();
+   await page.locator('#nav [data-page="athletes"]').click();
+   await page.getByRole('heading',{name:'Athletes'}).waitFor();
+   await page.locator('[data-go-back]').first().click();
+   await page.getByRole('heading',{name:'Takunda Mutizwa'}).waitFor();
    await page.locator('#nav [data-page="athletes"]').click();
    await page.getByRole('heading',{name:'Athletes'}).waitFor();
    await page.locator('[data-feedback-athlete="athlete-private"]').click();
