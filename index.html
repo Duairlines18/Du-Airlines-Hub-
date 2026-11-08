@@ -144,6 +144,24 @@ window.DU_AIRLINES_ENV = {
 .copy-destination-option{text-align:left;white-space:normal;justify-content:flex-start;padding:10px;overflow-wrap:anywhere}
 .copy-destination-option[aria-pressed="true"]{border-color:var(--gold);background:var(--lift)}
 #copyDestinationSearch{width:100%}
+/* Coaching-first single workspace, responsive: publishing stays individually gated */
+.weekly-writing-home{margin:12px 0 16px;display:grid;gap:12px}
+.weekly-writing-home h2{margin:4px 0;font-size:22px}
+.weekly-write-main{width:100%;min-height:48px;font-weight:750}
+.weekly-write-secondary{flex-wrap:wrap}.weekly-write-secondary .btn{flex:1;min-width:160px}
+.weekly-delivery-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.weekly-delivery-summary>div{display:flex;flex-direction:column;gap:2px;padding:10px;border:1px solid var(--hair);border-radius:9px}
+.weekly-delivery-summary strong{font-size:22px;color:var(--gold2)}
+.weekly-delivery-summary span{font-size:12px;color:var(--sage)}
+.weekly-delivery-rows{border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.weekly-delivery-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;gap:12px;border-bottom:1px solid var(--hair)}
+.weekly-delivery-row:last-child{border-bottom:0}
+.weekly-delivery-row>span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.weekly-delivery-row small{color:var(--sage);overflow-wrap:anywhere}
+.weekly-advanced{padding:10px 12px;margin-bottom:14px;border:1px solid var(--hair);border-radius:11px}
+.weekly-advanced>summary{cursor:pointer;color:var(--gold2);font-size:13px;font-weight:650}
+.weekly-advanced .context-grid{margin-top:12px}
+@media(max-width:520px){.weekly-write-secondary .btn{min-width:0;flex-basis:100%}.weekly-writing-home h2{font-size:20px}.weekly-delivery-row .btn{min-height:38px}}
 </style></head><body>
 <section id="login" class="login"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Private Control Room</h1><p class="muted">Secure founder access. This page is never linked from the public website.</p><form id="loginForm"><label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required><p id="loginErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Log in</button><div class="login-links"><button type="button" class="linkbtn" id="forgotPassword">Forgot password?</button></div></form><div id="setupNotice" class="notice hidden">Supabase is not configured yet. Add your project values to <span class="code">config.js</span>.</div></div></section>
 <section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
@@ -1277,6 +1295,58 @@ function publishTargetForCurrentContext(week){
     return {type:'athlete',id:d.account.id,label:d.label,current:athleteCurrentWeek(d.account)};
   return null;
 }
+function weeklyDeliveryOverview(programmeId,currentWeek){
+  const weeks=programmeWeeksFor(programmeId);
+  const current=Number(currentWeek||1),next=current+1;
+  const future=weeks.filter(w=>Number(w.week_number)>=current).sort((a,b)=>Number(a.week_number)-Number(b.week_number));
+  const published=future.filter(isPublishedWeek).length;
+  const drafts=future.filter(w=>!isPublishedWeek(w)).length;
+  const nextReadiness=weekReadiness(programmeId,next);
+  const nextLabel=nextReadiness.level==='live'?'Published':nextReadiness.level==='ready'?'Ready to review':nextReadiness.level==='incomplete'?'Needs editing':'Not started';
+  return {current,next,published,drafts,nextReadiness,nextLabel,rows:Array.from({length:4},(_,i)=>{
+    const n=current+i,w=programmeWeekByNumber(programmeId,n),r=weekReadiness(programmeId,n);
+    return {n,w,r,label:!w?'Not started':isPublishedWeek(w)?'Published':r.level==='ready'?'Draft ready':'Draft — needs work'};
+  })};
+}
+function selectProgrammeWeek(weekId){
+  const target=byId(state.programmeWeeks,weekId),context=contextDetails();
+  if(!target||!context||target.programme_id!==context.programmeId)return;
+  state.selectedWeekId=target.id;state.workspaceTab='programme';render();
+}
+async function writeNextWeek(){
+  const context=contextDetails();
+  if(!context)return;
+  const next=Number(context.currentWeek||1)+1,existing=programmeWeekByNumber(context.programmeId,next);
+  if(existing){
+    selectProgrammeWeek(existing.id);
+    if(isPublishedWeek(existing))alert('Week '+next+' is already published. Choose another draft week to edit.');
+    return;
+  }
+  if(next>52){alert('The maximum supported week is 52. Review the new training block first.');return;}
+  const button=document.querySelector('[data-write-next-week]');
+  if(button)button.disabled=true;
+  try{
+    const {data,error}=await sb.rpc('admin_prepare_future_week_drafts',{
+      p_programme_id:context.programmeId,p_after_week:next-1,p_count:1
+    });
+    if(error)throw error;
+    if(!data?.ok||data.status!=='draft'||data.published!==false)throw new Error('The draft could not be confirmed.');
+    await load();
+    const created=programmeWeekByNumber(context.programmeId,next);
+    if(!created)throw new Error('Week was prepared but is not visible. Refresh the programme.');
+    state.selectedWeekId=created.id;state.workspaceTab='programme';render();
+  }catch(error){alert(error.message||'Could not prepare next week. Existing training is unchanged.');if(button)button.disabled=false;}
+}
+function selectedWeekAction(weekId){
+  const week=byId(state.programmeWeeks,weekId);
+  const context=contextDetails();
+  if(!week||!context||week.programme_id!==context.programmeId)return;
+  state.selectedWeekId=week.id;
+  state.workspaceTab='programme';
+  render();
+  openWeekPlanning(week.id);
+}
+
 function openWeekPlanning(weekId){
   const week=byId(state.programmeWeeks,weekId);
   const target=publishTargetForCurrentContext(week);
@@ -1434,6 +1504,7 @@ function renderProgrammeEditor(m){
   const weekFeedback=allFeedback.filter(f=>Number(f.week_number)===Number(selectedWeekNumber)),latestFeedback=weekFeedback[0];
   const duration=Math.max(Number(programme?.duration_weeks||0),...weeks.map(w=>Number(w.week_number||0)),Number(currentWeek||1));
   const readiness=week?weekReadiness(programmeId,selectedWeekNumber):{level:'missing',label:'Not built',issues:[]};
+  const delivery=weeklyDeliveryOverview(programmeId,currentWeek);
   const weekStrip=Array.from({length:duration},(_,i)=>i+1).map(n=>{const w=weeks.find(x=>Number(x.week_number)===n),r=weekReadiness(programmeId,n),status=w&&Number(n)===Number(currentWeek)&&isPublishedWeek(w)?'Live':r.label;return `<button class="v3-week-btn ${w?.id===week?.id?'active':''}" ${w?`data-select-week="${w.id}"`:'disabled'}><strong>Week ${n}</strong><small>${esc(status)}${w?.phase?' · '+esc(w.phase):''}</small></button>`}).join('');
   const wholeWeek=days.map(day=>`<details class="v3-day v3-day-collapse" data-programme-day="${day.id}"><summary class="v3-day-summary"><div><div class="kicker">${esc(day.day_key||'Training Day')}</div><h2>${esc(day.title||day.day_key||'Training Day')}</h2><p class="muted">${esc(day.objective||'')}${day.intensity?' · '+esc(day.intensity):''}${day.duration?' · '+esc(day.duration):''}</p><span class="muted mini">${blocksForDay(day.id).length} workout blocks · tap to expand</span></div><span class="v3-expand-cue">Details</span></summary><div class="v3-day-expanded"><div class="row v3-day-actions"><button class="btn primary" data-quick-write="${day.id}">Quick Write</button><button class="btn ghost" data-preview-day="${day.id}">Preview</button><button class="btn ghost" data-edit-day="${day.id}">Edit Day</button><button class="btn ghost" data-add-block="${day.id}">+ Block</button></div>${blocksForDay(day.id).map(block=>{const c=block.content||{},pres=Array.isArray(c.prescriptions)?c.prescriptions:[],items=Array.isArray(c.items)?c.items:[];return `<details class="v3-block v3-block-collapse"><summary class="v3-block-summary"><div><strong>${esc(block.title||block.block_type||'Workout Block')}</strong>${c.focus?`<div class="muted mini">${esc(c.focus)}</div>`:''}</div><span class="muted mini">${pres.length+items.length} entries · expand</span></summary><div class="v3-block-body"><div class="row v3-block-actions"><button class="btn ghost" data-add-exercise="${block.id}">+ Exercise</button><button class="btn ghost" data-edit-block="${block.id}">Edit Block</button></div>${pres.length?pres.map((p,i)=>`<div class="v3-prescription"><div class="row" style="justify-content:space-between"><div style="min-width:0;flex:1">${prettyPrescription(p)}</div><button class="btn ghost" data-remove-prescription="${block.id}" data-prescription-index="${i}">Remove</button></div></div>`).join(''):items.map(x=>`<div class="v3-prescription">${esc(x)}</div>`).join('')||'<p class="muted mini">No exercises yet.</p>'}</div></details>`}).join('')}</div></details>`).join('');
   const backPage=d.ctx.type==='cohort'?(isSchoolCohort(cohort)?'cohorts':'cohort-programmes'):'athletes',typeLabel=d.ctx.type==='cohort'?(isSchoolCohort(cohort)?'School':'Programme Group'):direct?'Individual Programme':'Athlete';
@@ -1448,9 +1519,26 @@ function renderProgrammeEditor(m){
   const programmeHtml=week?`<section class="v3-section"><div class="toolbar"><div><div class="kicker">Week ${selectedWeekNumber}</div><h2>${esc(week.phase||'Programme Week')}</h2><p class="muted">${esc(week.weekly_objective||'No weekly objective yet.')} · Last changed ${esc(fmtDate(week.updated_at||week.published_at||week.created_at))}</p></div><div class="v3-health"><span class="pill">${isPublishedWeek(week)?'Published / visible':'Draft / hidden'}</span><span class="pill ${readiness.level==='incomplete'?'v3-status-bad':'v3-status-ready'}">${esc(readiness.label)}</span></div></div>${readiness.issues.length?`<div class="notice v3-status-bad"><strong>Not ready:</strong> ${esc(readiness.issues.join(' · '))}</div>`:''}${latestFeedback?`<div class="card" style="margin-bottom:14px"><div class="kicker">Latest Week Feedback</div><p>${feedbackSummary(latestFeedback)||'No response details.'}</p></div>`:''}<div class="v3-inline-actions v3-week-actions"><button class="btn primary" data-add-day="${week.id}">+ Training Day</button><button class="btn ghost" data-cross-copy-week="${week.id}" title="Copy a full training week into another eligible programme as a draft">Copy to Athlete / School</button><button class="btn primary" data-publish-week="${week.id}">${isPublishedWeek(week)?'View Published Week':'Plan & Publish Week'}</button></div><div class="v3-inline-actions v3-expand-actions"><button class="btn ghost" data-day-visibility="expand">Expand all days</button><button class="btn ghost" data-day-visibility="collapse">Collapse all days</button></div><p class="muted mini">Select a training day to see its blocks. Select a block to see prescriptions, rest, videos and editing controls.</p><div class="v3-list v3-condensed-week">${wholeWeek||'<div class="card muted">No training days built for this week.</div>'}</div></section>`:'<div class="card muted">No programme week selected.</div>';
   const tab=state.workspaceTab||'programme';
   m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker" style="margin-top:16px">${esc(typeLabel)}</div><h1>${esc(label)}</h1><p class="muted">${esc(programme?.name||'Programme')} · Current Week ${currentWeek}</p></div><div class="v3-actions"><button class="btn primary" data-workspace-current>Current Week</button><button class="btn ghost" data-workspace-tab="feedback">Feedback (${allFeedback.filter(feedbackNeedsReview).length})</button>${athleteId?`<button class="btn ghost" data-substitutions="${athleteId}">Exercise Swaps</button>`:''}${athleteId?`<button class="btn ghost" data-edit-athlete="${athleteId}">Manage Athlete</button>`:''}${d.ctx.type==='cohort'&&cohort?.id?`<button class="btn ghost" data-edit-cohort="${cohort.id}">${isSchoolCohort(cohort)?'School Settings':'Group Settings'}</button>`:''}</div></div>
+  <section class="card weekly-writing-home" aria-label="Training programme command centre">
+    <div class="toolbar"><div><div class="kicker">Write & Deliver</div><h2>Your training week</h2>
+    <p class="muted">Current Week ${delivery.current} · Next Week ${delivery.next}: <strong>${esc(delivery.nextLabel)}</strong></p></div></div>
+    <button class="btn primary weekly-write-main" data-write-next-week>${delivery.nextReadiness.week?'Open Next Week':'Write Next Week'}</button>
+    <div class="row weekly-write-secondary"><button class="btn ghost" data-prepare-drafts="${programmeId}" data-after-week="${currentWeek}">Plan 1 / 2 / 4 Weeks</button>
+    <button class="btn ghost" data-cross-copy-week="${week?.id||''}" ${week?'':'disabled'}>Copy Training Foundation</button></div>
+    <div class="weekly-delivery-summary">
+      <div><strong>${delivery.published}</strong><span>Published weeks (current onward)</span></div>
+      <div><strong>${delivery.drafts}</strong><span>Saved drafts (current onward)</span></div>
+    </div>
+    <div class="weekly-delivery-rows">
+      ${delivery.rows.map(x=>`<div class="weekly-delivery-row"><span><strong>Week ${x.n}</strong><small>${esc(x.label)}${x.w?' · '+x.r.days+' days / '+x.r.blocks+' blocks':''}</small></span>
+        ${x.w?`<button class="btn ghost" data-focus-programme-week="${x.w.id}">${isPublishedWeek(x.w)?'View':x.r.level==='ready'?'Review':'Edit'}</button>`:'<span class="muted mini">Create draft above</span>'}</div>`).join('')}
+    </div>
+    <p class="muted mini">Publish a week only after checking its sessions and videos. Publishing releases every workout in that week to the assigned audience; saving drafts does not.</p>
+  </section>
+  <details class="weekly-advanced"><summary>CRM notes & advanced athlete information</summary>
   ${d.ctx.type==='athlete'?crmBriefMarkup('athlete',account?.id):d.ctx.type==='cohort'&&isSchoolCohort(cohort)?crmBriefMarkup('school',cohort?.id):''}
   <div class="context-grid"><div class="card"><span class="muted mini">Current</span><strong>Week ${currentWeek}</strong></div><div class="card"><span class="muted mini">Built</span><strong>${weeks.length} weeks</strong></div><div class="card"><span class="muted mini">Viewing</span><strong>Week ${selectedWeekNumber}</strong></div><div class="card"><span class="muted mini">Feedback</span><strong>${allFeedback.filter(feedbackNeedsReview).length} waiting</strong></div></div>
-  <section class="v3-section"><div class="kicker">Full Programme</div><h2>Previous, current and saved next weeks</h2><div class="v3-week-strip">${weekStrip}</div><div class="v3-inline-actions"><button class="btn ghost" data-prepare-drafts="${programmeId}" data-after-week="${currentWeek}">+ Prepare 1, 2 or 4 future draft weeks</button></div></section>
+  </details><section class="v3-section"><div class="kicker">Your saved weeks</div><h2>Previous, current and saved next weeks</h2><div class="v3-week-strip">${weekStrip}</div></section>
   <div class="v3-subnav" role="group" aria-label="Workspace sections"><button data-workspace-tab="programme" class="${tab==='programme'?'active':''}">Programme</button>${cohort?.id&&isSchoolCohort(cohort)?`<button data-workspace-tab="athletes" class="${tab==='athletes'?'active':''}">Athletes (${schoolAthletes.length})</button>`:''}<button data-workspace-tab="feedback" class="${tab==='feedback'?'active':''}">Feedback (${allFeedback.length})</button><button data-workspace-tab="hub" class="${tab==='hub'?'active':''}">Hub Content</button><button data-workspace-tab="access" class="${tab==='access'?'active':''}">Access</button></div>
   ${tab==='programme'?programmeHtml:tab==='athletes'&&cohort?.id&&isSchoolCohort(cohort)?schoolRosterHtml:tab==='feedback'?feedbackHtml:tab==='hub'?hubHtml:accessHtml}`;
 }
@@ -1870,6 +1958,10 @@ document.addEventListener('click',async e=>{
   if(goBack){navigateBack();return;}
   const closeModal=e.target.closest('[data-close-modal]');
   if(closeModal){document.getElementById('modal').close();return;}
+  const nextWriter=e.target.closest('[data-write-next-week]');
+  if(nextWriter){await writeNextWeek();return;}
+  const focusWeek=e.target.closest('[data-focus-programme-week]');
+  if(focusWeek){selectProgrammeWeek(focusWeek.dataset.focusProgrammeWeek);return;}
   const startDrafts=e.target.closest('[data-prepare-drafts]');
   if(startDrafts){openFutureDrafts(startDrafts.dataset.prepareDrafts,Number(startDrafts.dataset.afterWeek));return;}
   const confirmDrafts=e.target.closest('[data-confirm-future-drafts]');
