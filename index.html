@@ -354,7 +354,7 @@ function overviewFeedbackRow(g){
   const latest=g.items[0];
   return `<div class="week-command-row"><div class="week-command-who"><strong>${esc(g.name)}</strong><small>${g.items.length} awaiting review${g.flagged?' · '+g.flagged+' need attention':''} · Latest: Week ${esc(latest.week_number||'—')}</small></div>
     <div class="row week-command-review"><button class="btn ghost" data-feedback-focus="${esc(g.key)}">View feedback</button>
-    <button class="btn ghost" data-review="${esc(latest.id)}" aria-label="Mark latest feedback from ${esc(g.name)} reviewed">✓ Review latest</button></div></div>`;
+    <button class="btn ghost" data-review="${esc(latest.id)}" aria-label="Mark latest feedback from ${esc(g.name)} reviewed">✓ Mark latest reviewed</button></div></div>`;
 }
 
 function nav(){
