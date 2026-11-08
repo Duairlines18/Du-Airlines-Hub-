@@ -14,5 +14,6 @@ test('internal note updates selected feedback only, confirms readback, and does 
   assert.ok(!handler.includes('reviewed_at'));
 });
 test('human review remains a separate existing action',()=>{
- assert.ok(source.includes("update({reviewed_at:new Date().toISOString()}).eq('id',rv.dataset.review)"));
+ assert.ok(source.includes("update({reviewed_at:new Date().toISOString()})"));
+ assert.ok(source.includes(".eq('id',id).is('reviewed_at',null).select('id,reviewed_at').maybeSingle()"));
 });
