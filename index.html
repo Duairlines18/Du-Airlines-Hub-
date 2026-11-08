@@ -1509,8 +1509,19 @@ document.addEventListener('click',async e=>{
 
   const rv=e.target.closest('[data-review]');
   if(rv){
-    const {error}=await sb.from('feedback').update({reviewed_at:new Date().toISOString()}).eq('id',rv.dataset.review);
-    if(error)alert(error.message);else await load();
+    const id=rv.dataset.review;
+    if(!id)return;
+    rv.disabled=true;
+    try{
+      const {data,error}=await sb.from('feedback').update({reviewed_at:new Date().toISOString()})
+        .eq('id',id).is('reviewed_at',null).select('id,reviewed_at').maybeSingle();
+      if(error)throw error;
+      if(!data?.reviewed_at||data.id!==id)throw new Error('Review was not confirmed. Refresh feedback and try again.');
+      await load();
+    }catch(error){
+      rv.disabled=false;
+      alert(error?.message||'Could not mark this feedback reviewed.');
+    }
     return;
   }
 
