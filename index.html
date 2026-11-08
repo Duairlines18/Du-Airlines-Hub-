@@ -1227,22 +1227,48 @@ function feedbackSummary(f){
   ].filter(x=>x[1]!==undefined&&x[1]!==null&&String(x[1]).trim()!=='');
   return fields.map(([k,v])=>`<span><strong>${esc(k)}:</strong> ${esc(v)}</span>`).join(' · ');
 }
-function renderFeedback(m){
-  const rows=[...state.feedback].sort((a,b)=>{
-    const ar=feedbackNeedsReview(a)?0:1,br=feedbackNeedsReview(b)?0:1;
-    return ar-br||new Date(b.created_at)-new Date(a.created_at);
-  });
-  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Feedback</h1><p class="muted">${rows.filter(feedbackNeedsReview).length} item(s) need review. Original athlete/parent/professional/coach answers are preserved.</p></div></div>
-  <div class="list">${rows.map(f=>`<div class="item"><div>
-    <strong>${esc(feedbackWho(f))} · ${esc(f.feedback_type)} · Week ${f.week_number||'-'}</strong>
+function feedbackOwnerKey(f){
+  return f.athlete_id?'athlete:'+f.athlete_id:f.professional_member_id?'professional:'+f.professional_member_id:
+    f.staff_id?'staff:'+f.staff_id:f.cohort_id?'cohort:'+f.cohort_id:'unassigned:'+f.id;
+}
+function feedbackTypeLabel(type){
+  return ({athlete_weekly:'Weekly Check-in',athlete_biweekly:'Biweekly Check-in',
+    parent_weekly:'Parent Check-in',coach_weekly:'Coach Check-in',
+    professional_weekly:'Professional Check-in',athlete_issue:'Training Issue'})[type]||String(type||'Feedback').replace(/_/g,' ');
+}
+function feedbackRow(f){
+  return `<article class="feedback-record">
+    <div class="feedback-record-head"><strong>Week ${esc(f.week_number||'—')} · ${esc(feedbackTypeLabel(f.feedback_type))}</strong><span class="pill">${esc(feedbackLabel(f))}</span></div>
     <p>${feedbackSummary(f)||'No response details.'}</p>
-    <p>Submitted ${esc(fmtDate(f.created_at))}${f.reviewed_at?' · Reviewed '+esc(fmtDate(f.reviewed_at)):''}</p>
-    <details><summary>Internal coaching note${f.admin_reply?' · Saved':''}</summary>
+    <p class="muted mini">Submitted ${esc(fmtDate(f.created_at))}${f.reviewed_at?' · Reviewed '+esc(fmtDate(f.reviewed_at)):''}</p>
+    <details class="feedback-note"><summary>Internal coaching note${f.admin_reply?' · Saved':''}</summary>
       <p class="muted mini">Private Coach Command note. Not sent to the athlete or parent.</p>
       <textarea data-feedback-note maxlength="1500" rows="3" aria-label="Internal note for ${esc(feedbackWho(f))}">${esc(f.admin_reply||'')}</textarea>
       <button class="btn ghost" data-save-feedback-note="${esc(f.id)}">Save Internal Note</button>
     </details>
-  </div><div class="row"><span class="pill">${esc(feedbackLabel(f))}</span>${feedbackNeedsReview(f)?`<button class="btn ghost" data-review="${f.id}">Mark Reviewed</button>`:''}</div></div>`).join('')||'<div class="card muted">No feedback yet.</div>'}</div>`;
+    ${feedbackNeedsReview(f)?`<button class="btn ghost" data-review="${esc(f.id)}">Mark Reviewed</button>`:''}
+  </article>`;
+}
+function renderFeedback(m){
+  const rows=[...state.feedback].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  const chosen=state.feedbackFocus?rows.filter(f=>feedbackOwnerKey(f)===state.feedbackFocus):rows;
+  const byPerson=new Map();
+  for(const f of chosen){
+    const key=feedbackOwnerKey(f);
+    if(!byPerson.has(key))byPerson.set(key,{key,name:feedbackWho(f),items:[]});
+    byPerson.get(key).items.push(f);
+  }
+  const groups=[...byPerson.values()].sort((a,b)=>
+    Number(b.items.some(feedbackNeedsReview))-Number(a.items.some(feedbackNeedsReview))
+    ||new Date(b.items[0].created_at)-new Date(a.items[0].created_at)
+  );
+  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Coaching Feedback</div><h1>${state.feedbackFocus?'Athlete Feedback':'Feedback'}</h1><p class="muted">One history per person. Open a name to review all weeks and save private notes.</p></div></div>
+  <div class="v3-actions">${state.feedbackFocus?'<button class="btn ghost" data-feedback-clear>All Feedback</button>':''}<button class="btn ghost" data-roster-filter="all">Athlete Roster</button></div>
+  <div class="feedback-group-list">${groups.map(g=>{
+    const pending=g.items.filter(feedbackNeedsReview).length;
+    return `<details class="feedback-person" ${state.feedbackFocus?'open':''}><summary class="feedback-person-summary"><span><strong>${esc(g.name)}</strong><small>${g.items.length} submission${g.items.length===1?'':'s'} · ${pending} to review</small></span><span class="feedback-expand">View history</span></summary>
+      <div class="feedback-history">${g.items.map(feedbackRow).join('')}</div></details>`;
+  }).join('')||'<div class="card muted">No feedback for this athlete yet.</div>'}</div>`;
 }
 
 function renderAccess(m){
