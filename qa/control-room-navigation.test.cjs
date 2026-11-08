@@ -25,8 +25,8 @@ test('overview active athlete metric navigates to active filtered roster',()=>{
   assert.ok(html.includes('data-athlete-filter='));
 });
 test('school page only shows organization-linked cohorts, programme groups are separate',()=>{
-  assert.ok(html.includes('const rows=state.cohorts.filter(isSchoolCohort)'));
-  assert.ok(html.includes('const rows=state.cohorts.filter(c=>!isSchoolCohort(c))'));
+  assert.ok(html.includes("const rows=state.cohorts.filter(c=>isSchoolCohort(c)&&c.status!=='archived')"));
+  assert.ok(html.includes("const rows=state.cohorts.filter(c=>!isSchoolCohort(c)&&c.status!=='archived')"));
   assert.ok(html.includes("if(state.page==='cohort-programmes')return renderProgrammeGroups(m)"));
   assert.ok(html.includes("isSchool?'Open School':'Open Programme'"));
 });

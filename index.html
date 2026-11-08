@@ -335,7 +335,7 @@ function globalSearchRows(query){
     const hay=[name,athleteProgrammeName(a),cohortName(a.cohort_id),athleteKind(a)].join(' ').toLowerCase();
     if(hay.includes(q))rows.push({type:'athlete',id:a.id,title:name,meta:`Athlete · ${athleteProgrammeName(a)} · Week ${athleteCurrentWeek(a)}`});
   });
-  state.cohorts.forEach(c=>{
+  state.cohorts.filter(c=>c.status!=='archived').forEach(c=>{
     const hay=[c.name,programmeName(c.programme_id),c.tier||''].join(' ').toLowerCase();
     if(hay.includes(q))rows.push({type:'cohort',id:c.id,title:c.name,meta:`School / Cohort · ${programmeName(c.programme_id)} · Week ${c.current_week||1}`});
   });
@@ -503,17 +503,19 @@ function cohortRows(rows,isSchool){
   return rows.map(c=>{
     const weeks=programmeWeeksFor(c.programme_id);
     const next=weekReadiness(c.programme_id,(c.current_week||1)+1);
-    const count=state.athletes.filter(a=>a.cohort_id===c.id).length;
+    const count=state.athletes.filter(a=>a.cohort_id===c.id&&a.access_status!=='archived').length;
     return `<div class="v3-person"><div><h3>${esc(c.name)}</h3><p>${isSchool?count+' assigned athlete'+(count===1?'':'s')+' · ':''}Current Week ${c.current_week||1} · ${weeks.length} week${weeks.length===1?'':'s'} built</p><p>${esc(programmeName(c.programme_id))} · ${next.level==='ready'||next.level==='live'?'Next week ready':next.level==='incomplete'?'Next week incomplete':'Next week missing'}</p></div><div class="row v3-person-actions"><span class="pill">${esc(c.status)}</span><button class="btn primary" data-open-cohort="${c.id}">${isSchool?'Open School':'Open Programme'}</button><button class="btn ghost" data-edit-cohort="${c.id}">Settings</button></div></div>`;
   }).join('')||'<div class="card muted">Nothing in this category yet.</div>';
 }
 function renderCohorts(m){
-  const rows=state.cohorts.filter(isSchoolCohort);
+  const rows=state.cohorts.filter(c=>isSchoolCohort(c)&&c.status!=='archived');
+  const archived=state.cohorts.filter(c=>isSchoolCohort(c)&&c.status==='archived');
   m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">School Partners</div><h1>Schools</h1><p class="muted">School organisations only. Individual private programmes are kept separate.</p></div></div><div class="v3-actions"><button class="btn ghost" data-page="cohort-programmes">View Programme Groups</button></div>
-  <div class="v3-list">${cohortRows(rows,true)}</div>`;
+  <div class="v3-list">${cohortRows(rows,true)}</div>
+  ${archived.length?`<details class="card" style="margin-top:16px"><summary style="cursor:pointer">Archived Schools (${archived.length}) — restore or inspect</summary><p class="muted mini">Archived school records and history are retained. Open Settings to restore a school when ready.</p><div class="v3-list">${cohortRows(archived,true)}</div></details>`:''}` 
 }
 function renderProgrammeGroups(m){
-  const rows=state.cohorts.filter(c=>!isSchoolCohort(c));
+  const rows=state.cohorts.filter(c=>!isSchoolCohort(c)&&c.status!=='archived');
   m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Training Delivery</div><h1>Programme Groups</h1><p class="muted">Individual-athlete containers, shared programmes and QA groups. These are not schools.</p></div><button class="btn ghost" data-add="cohort">Create Group</button></div>
   <div class="v3-list">${cohortRows(rows,false)}</div>`;
 }
