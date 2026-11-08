@@ -106,11 +106,25 @@ BEGIN
       CASE WHEN jsonb_typeof(b.content->'prescriptions')='array' THEN b.content->'prescriptions' ELSE '[]'::jsonb END
     ) ex
     WHERE d.programme_week_id=v_source.id AND
-      (NULLIF(ex->>'exerciseCode','') IS NOT NULL AND NOT EXISTS(
-        SELECT 1 FROM public.exercises e
-        WHERE e.code=ex->>'exerciseCode' AND e.active=true
-      ))
+      (
+        (NULLIF(ex->>'exerciseCode','') IS NOT NULL AND NOT EXISTS(
+          SELECT 1 FROM public.exercises e
+          WHERE e.code=ex->>'exerciseCode' AND e.active=true
+        ))
+        OR
+        (NULLIF(ex->>'alternativeExerciseCode','') IS NOT NULL AND NOT EXISTS(
+          SELECT 1 FROM public.exercises e
+          WHERE e.code=ex->>'alternativeExerciseCode' AND e.active=true
+        ))
+      )
   ) THEN RAISE EXCEPTION 'Source contains an unmatched exercise code; resolve it before copying'; END IF;
+
+  -- Existing null-tier week numbers may predate nulls-not-distinct constraints.
+  -- Refuse ambiguous destinations instead of selecting an arbitrary row.
+  IF (SELECT count(*) FROM public.programme_weeks pw
+      WHERE pw.programme_id=v_target_programme AND pw.week_number=p_target_week_number AND pw.tier_id IS NULL)>1 THEN
+    RAISE EXCEPTION 'Multiple destination week records exist; reconcile duplicates before copying';
+  END IF;
 
   SELECT pw.id,pw.status,pw.published_at,pw.verification_status
     INTO v_target_week,v_target_status,v_target_published,v_target_verification
