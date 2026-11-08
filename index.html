@@ -140,6 +140,10 @@ window.DU_AIRLINES_ENV = {
 #modalForm label{display:block;margin:12px 0}
 #modalForm select{max-width:100%}
 @media(max-width:520px){.modal-actions .btn{flex:1;min-width:130px}#modal{max-width:calc(100vw - 20px)}#nav .control-back-nav{position:sticky;left:0;z-index:2;background:var(--ink)}}
+.copy-destination-results{display:grid;gap:6px;max-height:230px;overflow-y:auto;padding:8px 0;scrollbar-width:thin}
+.copy-destination-option{text-align:left;white-space:normal;justify-content:flex-start;padding:10px;overflow-wrap:anywhere}
+.copy-destination-option[aria-pressed="true"]{border-color:var(--gold);background:var(--lift)}
+#copyDestinationSearch{width:100%}
 </style></head><body>
 <section id="login" class="login"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Private Control Room</h1><p class="muted">Secure founder access. This page is never linked from the public website.</p><form id="loginForm"><label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required><p id="loginErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Log in</button><div class="login-links"><button type="button" class="linkbtn" id="forgotPassword">Forgot password?</button></div></form><div id="setupNotice" class="notice hidden">Supabase is not configured yet. Add your project values to <span class="code">config.js</span>.</div></div></section>
 <section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
@@ -1190,17 +1194,30 @@ function crossCopyPreview(sourceWeekId,kind,targetId,targetWeekNo){
   return {source,target,targetWeekNo,existing,days,blocks,coded,videoCount,missingVideos,
     summary:days.map(day=>({name:day.title||day.day_key,blocks:blocksForDay(day.id).length}))};
 }
+function crossCopySearchResults(sourceWeekId,search=''){
+  const source=byId(state.programmeWeeks,sourceWeekId);
+  if(!source)return '';
+  const query=search.trim().toLowerCase();
+  const matches=crossCopyChoices(source.programme_id).filter(x=>!query||x.name.toLowerCase().includes(query));
+  return matches.slice(0,12).map(x=>`<button type="button" class="btn ghost copy-destination-option"
+    data-choose-copy-destination="${esc(x.kind+':'+x.id)}"
+    data-copy-destination-name="${esc(x.name)}">${esc(x.name)} <span class="muted mini">· ${x.kind==='school'?'School':'Athlete'} · ${esc(x.audience)}</span></button>`).join('')||
+    '<p class="muted mini">No eligible destination matches. Shared or tiered programmes cannot be copied into.</p>';
+}
 function startCrossProgrammeCopy(sourceWeekId){
   const source=byId(state.programmeWeeks,sourceWeekId);
   if(!source)return;
   const choices=crossCopyChoices(source.programme_id);
   if(!choices.length){alert('There are no eligible independent athlete or school destinations. Shared programmes must be separated before copying.');return;}
-  const opts=choices.map(x=>`<option value="${esc(x.kind+':'+x.id)}">${esc(x.name)} · ${x.kind==='school'?'School':'Athlete'} · ${esc(x.audience)}</option>`).join('');
-  openModal(`<h2>Copy workout week to another programme</h2>
-   <p class="muted">Source: ${esc(programmeName(source.programme_id))} · Week ${source.week_number}. Copy as an unpublished draft. Your original week will not change.</p>
-   <label for="copyToProgramme">Destination athlete or school</label><select id="copyToProgramme" required><option value="">Choose destination</option>${opts}</select>
+  openModal(`<h2>Copy workout to another athlete or school</h2>
+   <p class="muted">Source: ${esc(programmeName(source.programme_id))} · Week ${source.week_number}. Copies into an unpublished draft only.</p>
+   <label for="copyDestinationSearch">Search destination by name</label>
+   <input id="copyDestinationSearch" type="search" autocomplete="off" placeholder="Type athlete or school name" aria-controls="copyDestinationResults">
+   <input id="copyToProgramme" type="hidden" value="">
+   <div id="copyDestinationResults" class="copy-destination-results" role="group" aria-label="Eligible destination athletes and schools">${crossCopySearchResults(sourceWeekId)}</div>
+   <p class="muted mini" id="copySelectedDestination">No destination selected</p>
    <label for="copyToWeek">Destination week</label><input id="copyToWeek" type="number" min="1" max="52" value="${source.week_number}" required>
-   <div class="row"><button type="button" class="btn primary" data-preview-cross-copy="${source.id}">Preview before copying</button></div>
+   <div class="row modal-actions"><button type="button" class="btn ghost" data-close-modal>Cancel</button><button type="button" class="btn primary" data-preview-cross-copy="${source.id}">Preview before copying</button></div>
    <div id="copyProgrammePreview" aria-live="polite"></div>`);
 }
 function previewCrossProgrammeCopy(sourceWeekId){
@@ -1827,6 +1844,18 @@ function publishedWeekReady(programmeId,weekNumber){
   return state.programmeWeeks.some(w=>w.programme_id===programmeId&&w.week_number===weekNumber&&w.published_at&&w.verification_status==='verified'&&(w.status==='live'||w.status==='completed'));
 }
 
+document.addEventListener('input',e=>{
+  if(e.target?.id!=='copyDestinationSearch')return;
+  const sourceId=document.querySelector('[data-preview-cross-copy]')?.dataset.previewCrossCopy;
+  const list=document.getElementById('copyDestinationResults');
+  if(list&&sourceId)list.innerHTML=crossCopySearchResults(sourceId,e.target.value);
+  const selected=document.getElementById('copyToProgramme');
+  if(selected)selected.value='';
+  const label=document.getElementById('copySelectedDestination');
+  if(label)label.textContent='Choose a result to continue';
+  const preview=document.getElementById('copyProgrammePreview');
+  if(preview)preview.innerHTML='';
+});
 document.addEventListener('click',async e=>{
   const global=e.target.closest('[data-global-type]');
   if(global){
@@ -1916,6 +1945,13 @@ document.addEventListener('click',async e=>{
 
   const startCrossCopy=e.target.closest('[data-cross-copy-week]');
   if(startCrossCopy){startCrossProgrammeCopy(startCrossCopy.dataset.crossCopyWeek);return;}
+  const chooseCopy=e.target.closest('[data-choose-copy-destination]');
+  if(chooseCopy){
+    document.getElementById('copyToProgramme').value=chooseCopy.dataset.chooseCopyDestination;
+    document.getElementById('copySelectedDestination').textContent='Selected: '+chooseCopy.dataset.copyDestinationName;
+    document.getElementById('copyDestinationResults').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===chooseCopy)));
+    document.getElementById('copyProgrammePreview').innerHTML='';return;
+  }
   const previewCrossCopy=e.target.closest('[data-preview-cross-copy]');
   if(previewCrossCopy){previewCrossProgrammeCopy(previewCrossCopy.dataset.previewCrossCopy);return;}
   const confirmCrossCopy=e.target.closest('[data-confirm-cross-copy]');
@@ -1930,9 +1966,6 @@ document.addEventListener('click',async e=>{
     });
     return;
   }
-
-  const copyWeek=e.target.closest('[data-copy-week]');
-  if(copyWeek)return copyProgrammeWeek(copyWeek.dataset.copyWeek);
 
   const publishWeek=e.target.closest('[data-publish-week]');
   if(publishWeek){openWeekPlanning(publishWeek.dataset.publishWeek);return;}
