@@ -50,6 +50,17 @@ function pageSource(){
    page.on('pageerror',e=>errors.push(String(e)));
    await page.setContent(pageSource(),{waitUntil:'load'});
    await page.getByRole('heading',{name:'Control Room'}).waitFor();
+   await page.getByRole('heading',{name:"Next Week's Plans"}).waitFor();
+   assert.equal(await page.locator('#runningProgrammes .week-command-row').count(),2,'one line for private programme and one school');
+   assert.equal(await page.locator('#needsAttention .week-command-row').count(),1,'feedback grouped by person');
+   assert.ok((await page.locator('#runningProgrammes').innerText()).includes('Next W'));
+   assert.ok((await page.locator('#runningProgrammes').innerText()).includes('Not built'));
+   await page.locator('[data-overview-toggle-plans]').click();
+   assert.equal(await page.locator('#runningProgrammes .week-command-row').count(),2);
+   await page.locator('#needsAttention [data-feedback-focus]').click();
+   await page.getByRole('heading',{name:'Athlete Feedback'}).waitFor();
+   await page.locator('#nav [data-page="dashboard"]').click();
+   await page.getByRole('heading',{name:'Control Room'}).waitFor();
    await page.locator('[data-roster-filter="active"]').click();
    await page.getByRole('heading',{name:'Athletes'}).waitFor();
    assert.equal(await page.locator('#athleteList .v3-person').count(),2);
