@@ -53,7 +53,7 @@ async function airtableRequest(path:string,token:string){
 Deno.serve(async(req:Request)=>{
   const origin=req.headers.get('origin')||'';
   if(origin&&!allowedOrigins.has(origin))return respond({error:'Origin not allowed'},403);
-  if(req.method==='OPTIONS')return respond({ok:true},204,origin);
+  if(req.method==='OPTIONS')return respond({ok:true},200,origin);
   if(req.method!=='POST')return respond({error:'Method not allowed'},405,origin);
 
   const bearer=req.headers.get('authorization')||'';
