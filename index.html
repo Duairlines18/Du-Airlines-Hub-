@@ -455,9 +455,23 @@ function professionalForm(p={}){
   <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveProfessional">Save Assignment</button></div>`);
 }
 
+function cohortRows(rows,isSchool){
+  return rows.map(c=>{
+    const weeks=programmeWeeksFor(c.programme_id);
+    const next=weekReadiness(c.programme_id,(c.current_week||1)+1);
+    const count=state.athletes.filter(a=>a.cohort_id===c.id).length;
+    return `<div class="v3-person"><div><h3>${esc(c.name)}</h3><p>${isSchool?count+' assigned athlete'+(count===1?'':'s')+' · ':''}Current Week ${c.current_week||1} · ${weeks.length} week${weeks.length===1?'':'s'} built</p><p>${esc(programmeName(c.programme_id))} · ${next.level==='ready'||next.level==='live'?'Next week ready':next.level==='incomplete'?'Next week incomplete':'Next week missing'}</p></div><div class="row v3-person-actions"><span class="pill">${esc(c.status)}</span><button class="btn primary" data-open-cohort="${c.id}">${isSchool?'Open School':'Open Programme'}</button><button class="btn ghost" data-edit-cohort="${c.id}">Settings</button></div></div>`;
+  }).join('')||'<div class="card muted">Nothing in this category yet.</div>';
+}
 function renderCohorts(m){
-  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Schools & Cohorts</div><h1>Schools</h1><p class="muted">Open a cohort and control its programme from the same week-based workspace used for private athletes.</p></div><button class="btn primary" data-add="cohort">Create Cohort</button></div>
-  <div class="v3-list">${state.cohorts.map(c=>{const weeks=programmeWeeksFor(c.programme_id),next=weekReadiness(c.programme_id,(c.current_week||1)+1);return `<div class="v3-person"><div><h3>${esc(c.name)}</h3><p>${esc(programmeName(c.programme_id))} · Current Week ${c.current_week||1} · ${weeks.length} week${weeks.length===1?'':'s'} built · ${next.level==='ready'||next.level==='live'?'Next week ready':next.level==='incomplete'?'Next week incomplete':'Next week missing'}</p></div><div class="row"><span class="pill">${esc(c.status)}</span><button class="btn primary" data-open-cohort="${c.id}">Open School</button><button class="btn ghost" data-edit-cohort="${c.id}">Settings</button></div></div>`}).join('')||'<div class="card muted">No cohorts yet.</div>'}</div>`;
+  const rows=state.cohorts.filter(isSchoolCohort);
+  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">School Partners</div><h1>Schools</h1><p class="muted">School organisations only. Individual private programmes are kept separate.</p></div></div><div class="v3-actions"><button class="btn ghost" data-page="cohort-programmes">View Programme Groups</button></div>
+  <div class="v3-list">${cohortRows(rows,true)}</div>`;
+}
+function renderProgrammeGroups(m){
+  const rows=state.cohorts.filter(c=>!isSchoolCohort(c));
+  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Training Delivery</div><h1>Programme Groups</h1><p class="muted">Individual-athlete containers, shared programmes and QA groups. These are not schools.</p></div><button class="btn ghost" data-add="cohort">Create Group</button></div>
+  <div class="v3-list">${cohortRows(rows,false)}</div>`;
 }
 
 function programmeOptions(selected=''){
