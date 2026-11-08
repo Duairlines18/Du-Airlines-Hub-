@@ -1107,6 +1107,117 @@ function previewDay(day){
 }
 
 
+function crossCopyChoices(sourceProgrammeId){
+  const choices=[];
+  for(const athlete of state.athletes){
+    if(athlete.access_status!=='active'||!athlete.programme_id||athlete.programme_id===sourceProgrammeId)continue;
+    const pid=athlete.programme_id;
+    const owners=state.athletes.filter(a=>a.access_status==='active'&&a.programme_id===pid);
+    const linkedCohorts=state.cohorts.filter(c=>c.status==='live'&&c.programme_id===pid);
+    if(owners.length!==1||linkedCohorts.length||state.programmeTiers.some(t=>t.programme_id===pid))continue;
+    choices.push({kind:'athlete',id:athlete.id,name:athlete.full_name||athlete.display_name||'Athlete',programmeId:pid,audience:'One active athlete'});
+  }
+  for(const cohort of state.cohorts){
+    if(cohort.status!=='live'||!isSchoolCohort(cohort)||!cohort.programme_id||cohort.programme_id===sourceProgrammeId)continue;
+    const pid=cohort.programme_id;
+    if(state.cohorts.filter(c=>c.status==='live'&&c.programme_id===pid).length!==1||
+      state.athletes.some(a=>a.access_status==='active'&&a.programme_id===pid)||
+      state.programmeTiers.some(t=>t.programme_id===pid))continue;
+    const audience=state.athletes.filter(a=>a.cohort_id===cohort.id&&a.access_status==='active').length;
+    choices.push({kind:'school',id:cohort.id,name:cohort.name,programmeId:pid,audience:audience+' active school athlete(s)'});
+  }
+  return choices.sort((a,b)=>a.name.localeCompare(b.name));
+}
+function crossCopyPreview(sourceWeekId,kind,targetId,targetWeekNo){
+  const source=byId(state.programmeWeeks,sourceWeekId);
+  const target=crossCopyChoices(source?.programme_id).find(x=>x.kind===kind&&x.id===targetId);
+  const targetProgramme=target?byId(state.programmes,target.programmeId):null;
+  if(!source||!target||!Number.isInteger(targetWeekNo)||targetWeekNo<1||targetWeekNo>Number(targetProgramme?.duration_weeks||0))
+    return {error:'Choose an eligible destination and a week within its programme duration.'};
+  if(source.tier_id)return {error:'Tiered sources require separate tier matching before copying.'};
+  const original=weekReadiness(source.programme_id,source.week_number);
+  if(!original.week||original.level==='missing'||original.level==='incomplete')
+    return {error:'Finish the source training week before copying.'};
+  const existing=programmeWeekByNumber(target.programmeId,targetWeekNo);
+  if(existing){
+    if(existing.tier_id||existing.status!=='draft'||existing.published_at||existing.verification_status==='verified'||daysForWeek(existing.id).length)
+      return {error:'Destination week already has content or is published. Existing training is protected.'};
+  }
+  const days=daysForWeek(source.id);
+  const blocks=days.flatMap(d=>blocksForDay(d.id));
+  if(!days.length||!blocks.length||blocks.some(b=>!blockHasContent(b)))
+    return {error:'The source must contain complete workout days and blocks.'};
+  let coded=0,videoCount=0,missingVideos=0;
+  for(const block of blocks){
+    const pres=Array.isArray(block.content?.prescriptions)?block.content.prescriptions:[];
+    for(const exercise of pres){
+      if(!exercise.exerciseCode)continue;
+      coded++;
+      const library=exerciseByCode(exercise.exerciseCode);
+      if(!library?.active)return {error:'An exercise code is no longer active: '+exercise.exerciseCode};
+      if(library.video_id||library.video_url)videoCount++;else missingVideos++;
+    }
+  }
+  return {source,target,targetWeekNo,existing,days,blocks,coded,videoCount,missingVideos,
+    summary:days.map(day=>({name:day.title||day.day_key,blocks:blocksForDay(day.id).length}))};
+}
+function startCrossProgrammeCopy(sourceWeekId){
+  const source=byId(state.programmeWeeks,sourceWeekId);
+  if(!source)return;
+  const choices=crossCopyChoices(source.programme_id);
+  if(!choices.length){alert('There are no eligible independent athlete or school destinations. Shared programmes must be separated before copying.');return;}
+  const opts=choices.map(x=>`<option value="${esc(x.kind+':'+x.id)}">${esc(x.name)} · ${x.kind==='school'?'School':'Athlete'} · ${esc(x.audience)}</option>`).join('');
+  openModal(`<h2>Copy workout week to another programme</h2>
+   <p class="muted">Source: ${esc(programmeName(source.programme_id))} · Week ${source.week_number}. Copy as an unpublished draft. Your original week will not change.</p>
+   <label for="copyToProgramme">Destination athlete or school</label><select id="copyToProgramme" required><option value="">Choose destination</option>${opts}</select>
+   <label for="copyToWeek">Destination week</label><input id="copyToWeek" type="number" min="1" max="52" value="${source.week_number}" required>
+   <div class="row"><button type="button" class="btn primary" data-preview-cross-copy="${source.id}">Preview before copying</button></div>
+   <div id="copyProgrammePreview" aria-live="polite"></div>`);
+}
+function previewCrossProgrammeCopy(sourceWeekId){
+  const selection=document.getElementById('copyToProgramme')?.value||'';
+  const [kind,targetId]=selection.split(':');
+  const weekNo=Number(document.getElementById('copyToWeek')?.value);
+  const result=crossCopyPreview(sourceWeekId,kind,targetId,weekNo);
+  const container=document.getElementById('copyProgrammePreview');
+  if(!container)return;
+  if(result.error){container.innerHTML=`<div class="notice v3-status-bad" role="alert">${esc(result.error)}</div>`;return;}
+  container.innerHTML=`<div class="card"><h3>Copy preview: ${esc(result.target.name)} · Week ${result.targetWeekNo}</h3>
+    <p><strong>Destination:</strong> ${esc(result.target.audience)} · ${esc(programmeName(result.target.programmeId))}</p>
+    <p><strong>Source:</strong> Week ${result.source.week_number} · ${esc(result.source.phase||'Training foundation')} · ${result.days.length} days · ${result.blocks.length} blocks</p>
+    <ul>${result.summary.map(day=>`<li>${esc(day.name)} · ${day.blocks} block(s)</li>`).join('')}</ul>
+    <p class="muted mini">${result.coded} coded exercises · ${result.videoCount} video links · ${result.missingVideos} without video. Original exercise codes and sets/reps/rest are copied unchanged.</p>
+    <div class="notice">Saves only an unpublished draft. Source-specific notes and playlists are not transferred. Review dosage, technique and videos before publishing.</div>
+    <button type="button" class="btn primary" data-confirm-cross-copy="${sourceWeekId}" data-target-kind="${result.target.kind}" data-target-id="${result.target.id}" data-target-week="${result.targetWeekNo}">Save draft for ${esc(result.target.name)}</button></div>`;
+}
+async function confirmCrossProgrammeCopy(button){
+  const sourceWeekId=button.dataset.confirmCrossCopy,kind=button.dataset.targetKind,targetId=button.dataset.targetId;
+  const targetWeekNo=Number(button.dataset.targetWeek);
+  const preview=crossCopyPreview(sourceWeekId,kind,targetId,targetWeekNo);
+  if(preview.error){alert(preview.error);return;}
+  const currentSelection=(document.getElementById('copyToProgramme')?.value||'');
+  if(currentSelection!==kind+':'+targetId||Number(document.getElementById('copyToWeek')?.value)!==targetWeekNo){
+    alert('Destination changed. Preview the copy again before saving.');return;
+  }
+  if(!confirm('Save '+preview.days.length+' days and '+preview.blocks.length+' blocks as an UNPUBLISHED draft for '+preview.target.name+' Week '+targetWeekNo+'? You must review training before publishing.'))return;
+  button.disabled=true;
+  try{
+    const {data,error}=await sb.rpc('admin_copy_training_week_to_target',{
+      p_source_week_id:sourceWeekId,p_target_kind:kind,p_target_id:targetId,p_target_week_number:targetWeekNo
+    });
+    if(error)throw error;
+    if(!data?.ok||data?.status!=='draft'||data?.published!==false||!data?.target_week_id)
+      throw new Error('Destination confirmation failed; check the target before retrying.');
+    document.getElementById('modal').close();
+    await load();
+    state.programmeContext={type:kind==='school'?'cohort':'athlete',id:targetId};
+    state.page=kind==='school'?'programme-editor':'athlete-workspace';
+    state.workspaceTab='programme';
+    state.selectedWeekId=data.target_week_id;
+    render();
+    alert('Week '+targetWeekNo+' saved as a draft. Review exercises and video matches before publishing.');
+  }catch(error){button.disabled=false;alert(error.message||'Copy failed. Original week was not changed.');}
+}
 async function copyProgrammeWeek(sourceWeekId){
   const source=byId(state.programmeWeeks,sourceWeekId);if(!source)return;
   const sourceReady=weekReadiness(source.programme_id,source.week_number);
@@ -1218,7 +1329,7 @@ function renderProgrammeEditor(m){
   const hubAudienceCount=athleteId?state.athletes.filter(a=>athleteProgrammeId(a)===programmeId&&a.access_status==='active').length:membersInCohort(cohort?.id);
   const hubAudienceLabel=athleteId&&hubAudienceCount===1?`${label} only`:athleteId?`${hubAudienceCount} active athletes using this programme`:`${hubAudienceCount} athlete account${hubAudienceCount===1?'':'s'} in this cohort`;
   const hubHtml=week?`<div class="card"><h3>Coach Du Hub Message</h3><div class="notice"><strong>Visible to:</strong> ${esc(hubAudienceLabel)}</div><p class="muted">This uses the selected week’s existing athlete-education field. Check the audience above before saving.</p><textarea id="hubMessageText" rows="5" placeholder="Example: Own the positions this week. Quality before volume.">${esc(week.athlete_education||'')}</textarea><input type="hidden" id="hubMessageWeekId" value="${week.id}"><div class="row" style="margin-top:12px"><button class="btn primary" id="saveHubMessage">Save Hub Message</button></div></div>`:'<div class="card muted">Choose an existing week first.</div>';
-  const programmeHtml=week?`<section class="v3-section"><div class="toolbar"><div><div class="kicker">Week ${selectedWeekNumber}</div><h2>${esc(week.phase||'Programme Week')}</h2><p class="muted">${esc(week.weekly_objective||'No weekly objective yet.')} · Last changed ${esc(fmtDate(week.updated_at||week.published_at||week.created_at))}</p></div><div class="v3-health"><span class="pill">${isPublishedWeek(week)?'Published / visible':'Draft / hidden'}</span><span class="pill ${readiness.level==='incomplete'?'v3-status-bad':'v3-status-ready'}">${esc(readiness.label)}</span></div></div>${readiness.issues.length?`<div class="notice v3-status-bad"><strong>Not ready:</strong> ${esc(readiness.issues.join(' · '))}</div>`:''}${latestFeedback?`<div class="card" style="margin-bottom:14px"><div class="kicker">Latest Week Feedback</div><p>${feedbackSummary(latestFeedback)||'No response details.'}</p></div>`:''}<div class="v3-inline-actions v3-week-actions"><button class="btn primary" data-add-day="${week.id}">+ Training Day</button><button class="btn ghost" data-copy-week="${week.id}" title="Duplicate within this programme only">Duplicate to another week</button><button class="btn ghost" data-publish-week="${week.id}">Publish Week</button></div><div class="v3-inline-actions v3-expand-actions"><button class="btn ghost" data-day-visibility="expand">Expand all days</button><button class="btn ghost" data-day-visibility="collapse">Collapse all days</button></div><p class="muted mini">Select a training day to see its blocks. Select a block to see prescriptions, rest, videos and editing controls.</p><div class="v3-list v3-condensed-week">${wholeWeek||'<div class="card muted">No training days built for this week.</div>'}</div></section>`:'<div class="card muted">No programme week selected.</div>';
+  const programmeHtml=week?`<section class="v3-section"><div class="toolbar"><div><div class="kicker">Week ${selectedWeekNumber}</div><h2>${esc(week.phase||'Programme Week')}</h2><p class="muted">${esc(week.weekly_objective||'No weekly objective yet.')} · Last changed ${esc(fmtDate(week.updated_at||week.published_at||week.created_at))}</p></div><div class="v3-health"><span class="pill">${isPublishedWeek(week)?'Published / visible':'Draft / hidden'}</span><span class="pill ${readiness.level==='incomplete'?'v3-status-bad':'v3-status-ready'}">${esc(readiness.label)}</span></div></div>${readiness.issues.length?`<div class="notice v3-status-bad"><strong>Not ready:</strong> ${esc(readiness.issues.join(' · '))}</div>`:''}${latestFeedback?`<div class="card" style="margin-bottom:14px"><div class="kicker">Latest Week Feedback</div><p>${feedbackSummary(latestFeedback)||'No response details.'}</p></div>`:''}<div class="v3-inline-actions v3-week-actions"><button class="btn primary" data-add-day="${week.id}">+ Training Day</button><button class="btn ghost" data-copy-week="${week.id}" title="Duplicate within this programme only">Duplicate to another week</button><button class="btn ghost" data-cross-copy-week="${week.id}" title="Copy a full training week into another eligible programme as a draft">Copy to Athlete / School</button><button class="btn ghost" data-publish-week="${week.id}">Publish Week</button></div><div class="v3-inline-actions v3-expand-actions"><button class="btn ghost" data-day-visibility="expand">Expand all days</button><button class="btn ghost" data-day-visibility="collapse">Collapse all days</button></div><p class="muted mini">Select a training day to see its blocks. Select a block to see prescriptions, rest, videos and editing controls.</p><div class="v3-list v3-condensed-week">${wholeWeek||'<div class="card muted">No training days built for this week.</div>'}</div></section>`:'<div class="card muted">No programme week selected.</div>';
   const tab=state.workspaceTab||'programme';
   m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><button class="btn ghost" data-page="${backPage}">← Back</button><div class="kicker" style="margin-top:16px">${esc(typeLabel)}</div><h1>${esc(label)}</h1><p class="muted">${esc(programme?.name||'Programme')} · Current Week ${currentWeek}</p></div><div class="v3-actions"><button class="btn primary" data-workspace-current>Current Week</button><button class="btn ghost" data-workspace-tab="feedback">Feedback (${allFeedback.filter(feedbackNeedsReview).length})</button>${athleteId?`<button class="btn ghost" data-substitutions="${athleteId}">Exercise Swaps</button>`:''}${athleteId?`<button class="btn ghost" data-edit-athlete="${athleteId}">Manage Athlete</button>`:''}${d.ctx.type==='cohort'&&cohort?.id?`<button class="btn ghost" data-edit-cohort="${cohort.id}">${isSchoolCohort(cohort)?'School Settings':'Group Settings'}</button>`:''}</div></div>
   ${d.ctx.type==='athlete'?crmBriefMarkup('athlete',account?.id):d.ctx.type==='cohort'&&isSchoolCohort(cohort)?crmBriefMarkup('school',cohort?.id):''}
@@ -1673,6 +1784,13 @@ document.addEventListener('click',async e=>{
 
   const removeExercise=e.target.closest('[data-remove-prescription]');
   if(removeExercise)return removePrescription(removeExercise.dataset.removePrescription,Number(removeExercise.dataset.prescriptionIndex));
+
+  const startCrossCopy=e.target.closest('[data-cross-copy-week]');
+  if(startCrossCopy){startCrossProgrammeCopy(startCrossCopy.dataset.crossCopyWeek);return;}
+  const previewCrossCopy=e.target.closest('[data-preview-cross-copy]');
+  if(previewCrossCopy){previewCrossProgrammeCopy(previewCrossCopy.dataset.previewCrossCopy);return;}
+  const confirmCrossCopy=e.target.closest('[data-confirm-cross-copy]');
+  if(confirmCrossCopy){await confirmCrossProgrammeCopy(confirmCrossCopy);return;}
 
   const visibility=e.target.closest('[data-day-visibility]');
   if(visibility){

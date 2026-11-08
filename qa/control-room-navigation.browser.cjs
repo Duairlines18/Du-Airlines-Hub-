@@ -54,7 +54,7 @@ function pageSource(){
   return fs.readFileSync(path.join(__dirname,'../index.html'),'utf8')
     .replace('<script src="access-codes.js"></script>','')
     .replace('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>',stub)
-    .replace('<script src="qa/workout-validation.js"></script>','');
+    .replace('<script src="qa/workout-validation.js"></script>','<script>function workoutDeliveryIssues(){return [];}</script>');
 }
 (async()=>{
  const browser=await chromium.launch({headless:true});
@@ -98,6 +98,19 @@ function pageSource(){
    assert.equal(await page.locator('details.v3-day-collapse[open]').count(),2);
    assert.equal(await page.locator('details.v3-block-collapse[open]').count(),2);
    assert.equal(await page.locator('[data-copy-week]').count(),1,'existing safe same-programme copy action preserved');
+   await page.locator('[data-cross-copy-week="week-private-5"]').click();
+   await page.locator('#copyToProgramme').selectOption('school:cohort-school');
+   await page.locator('#copyToWeek').fill('1');
+   await page.locator('[data-preview-cross-copy="week-private-5"]').click();
+   await page.getByText('Copy preview: St George\'s College · Week 1').waitFor();
+   assert.ok((await page.locator('#copyProgrammePreview').innerText()).includes('2 days · 2 blocks'));
+   assert.ok((await page.locator('#copyProgrammePreview').innerText()).includes('1 video links'));
+   assert.equal(await page.locator('[data-confirm-cross-copy]').count(),1,'preview offers a draft-only save');
+   await page.locator('#copyToWeek').fill('7');
+   await page.locator('[data-preview-cross-copy="week-private-5"]').click();
+   assert.ok((await page.locator('#copyProgrammePreview [role="alert"]').innerText()).includes('Choose an eligible destination'));
+   assert.equal(await page.locator('[data-confirm-cross-copy]').count(),0,'invalid destination week cannot be saved');
+   await page.locator('#modal').evaluate(el=>el.close());
    await page.locator('[data-load-crm="athlete:athlete-private"]').click();
    await page.getByText('Synthetic coach decision for QA only').waitFor();
    await page.locator('#nav [data-page="athletes"]').click();
