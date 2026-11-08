@@ -7,7 +7,7 @@ const mainScript=html.split('<script src="qa/workout-validation.js"></script>\n<
 test('Control Room inline JavaScript parses',()=>{assert.ok(mainScript);new Function(mainScript)});
 test('school classification relies on actual organization link, not names',()=>{
   const s=html.slice(html.indexOf('const isSchoolCohort='),html.indexOf('const feedbackNeedsReview='));
-  const sandbox={cohortFor:id=>({organization_id:id==='school'?'org-1':null})};
+  const sandbox={cohortFor:id=>({organization_id:id==='school'?'org-1':null}),isParentManaged:a=>!!a?.parent_user_id,isPrivateAthlete:a=>!!a?.athlete_user_id};
   vm.runInNewContext(s+';globalThis.exported={isSchoolCohort,isSchoolAthlete,athleteKind}',sandbox);
   const {isSchoolCohort,isSchoolAthlete,athleteKind}=sandbox.exported;
   assert.equal(isSchoolCohort({name:'St George’s',organization_id:'org-1'}),true);
