@@ -84,6 +84,10 @@ function pageSource(){
    assert.equal(await page.locator('#athleteList .v3-person').count(),1);
    await page.locator('[data-open-athlete="athlete-private"]').click();
    await page.getByRole('heading',{name:'Takunda Mutizwa'}).waitFor();
+   await page.getByRole('heading',{name:'Your training week'}).waitFor();
+   assert.equal(await page.locator('.weekly-delivery-row').count(),4,'four upcoming delivery statuses visible');
+   assert.ok((await page.locator('.weekly-writing-home').innerText()).includes('Next Week 6: Not started'));
+   assert.equal(await page.locator('[data-write-next-week]').count(),1,'one primary writing action');
    assert.equal(await page.locator('details.v3-day-collapse').count(),2,'two compact days');
    assert.equal(await page.locator('details.v3-day-collapse[open]').count(),0,'days default collapsed');
    await page.locator('details.v3-day-collapse').first().locator('summary.v3-day-summary').click();
@@ -131,6 +135,7 @@ function pageSource(){
    assert.ok((await page.locator('#copyProgrammePreview [role="alert"]').innerText()).includes('Choose an eligible destination'));
    assert.equal(await page.locator('[data-confirm-cross-copy]').count(),0,'invalid destination week cannot be saved');
    await page.locator('#modal').evaluate(el=>el.close());
+   await page.locator('details.weekly-advanced > summary').click();
    await page.locator('[data-load-crm="athlete:athlete-private"]').click();
    await page.getByText('Synthetic coach decision for QA only').waitFor();
    await page.locator('#nav [data-page="athletes"]').click();
@@ -150,6 +155,7 @@ function pageSource(){
    assert.ok(!(await page.locator('#main').innerText()).includes('Takunda Mutizwa'));
    await page.locator('#main [data-open-cohort="cohort-school"]').click();
    await page.getByRole('heading',{name:"St George's College"}).waitFor();
+   await page.locator('details.weekly-advanced > summary').click();
    await page.locator('[data-load-crm="school:cohort-school"]').click();
    await page.getByText('Synthetic follow-up for QA only').waitFor();
    await page.locator('[data-workspace-tab="athletes"]').click();
