@@ -1478,8 +1478,16 @@ async function loadCrmBrief(type,id){
   if(!sb||!['athlete','school'].includes(type)||!id)return;
   const key=type+':'+id;
   if(state.crmBriefs[key]?.loading)return;
+  // Keep expanded CRM visible while its async request re-renders this workspace.
+  const expanded=document.querySelector('details.weekly-advanced')?.open===true;
+  const refreshVisible=()=>{
+    if(['athlete-workspace','programme-editor'].includes(state.page)){
+      render();
+      if(expanded){const panel=document.querySelector('details.weekly-advanced');if(panel)panel.open=true;}
+    }
+  };
   state.crmBriefs[key]={...state.crmBriefs[key],loading:true,error:''};
-  render();
+  refreshVisible();
   try{
     const {data,error}=await sb.functions.invoke('control-room-crm',{body:{type,id}});
     if(error)throw error;
@@ -1488,7 +1496,7 @@ async function loadCrmBrief(type,id){
   }catch{
     state.crmBriefs[key]={loading:false,error:'CRM could not be loaded. Check its secure server connection or try again.',data:null};
   }
-  if(['athlete-workspace','programme-editor'].includes(state.page))render();
+  refreshVisible();
 }
 
 function renderProgrammeEditor(m){
