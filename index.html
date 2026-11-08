@@ -1269,6 +1269,10 @@ function publishTargetForCurrentContext(week){
   if(!d||!week)return null;
   if(d.ctx.type==='cohort'&&d.cohort?.id&&d.cohort.programme_id===week.programme_id)
     return {type:'cohort',id:d.cohort.id,label:d.cohort.name,current:d.cohort.current_week};
+  // School athletes inherit the cohort programme: publishing must advance the school, not just one profile.
+  if(d.ctx.type==='athlete'&&isSchoolAthlete(d.account)&&d.cohort?.organization_id&&
+     d.cohort.programme_id===week.programme_id)
+    return {type:'cohort',id:d.cohort.id,label:d.cohort.name+' (school programme)',current:d.cohort.current_week};
   if(d.ctx.type==='athlete'&&d.account?.id&&athleteProgrammeId(d.account)===week.programme_id)
     return {type:'athlete',id:d.account.id,label:d.label,current:athleteCurrentWeek(d.account)};
   return null;
