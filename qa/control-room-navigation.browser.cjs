@@ -64,7 +64,7 @@ function pageSource(){
    await page.getByRole('heading',{name:'Schools'}).waitFor();
    assert.ok((await page.locator('#main').innerText()).includes("St George's College"));
    assert.ok(!(await page.locator('#main').innerText()).includes('Takunda Mutizwa'));
-   await page.locator('#nav [data-page="cohort-programmes"]').click();
+   await page.locator('#main [data-page="cohort-programmes"]').click();
    await page.getByRole('heading',{name:'Programme Groups'}).waitFor();
    assert.ok((await page.locator('#main').innerText()).includes('Takunda Mutizwa'));
    assert.ok(!(await page.locator('#main').innerText()).includes("St George's College"));
