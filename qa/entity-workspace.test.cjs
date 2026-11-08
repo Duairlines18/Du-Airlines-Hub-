@@ -24,6 +24,7 @@ test('workspace quick actions use existing read/write flows without altering dat
  assert.ok(html.includes('data-workspace-tab="access"'));
  assert.ok(html.includes('data-edit-cohort='));
  assert.ok(html.includes('data-edit-athlete='));
+ assert.ok(html.includes('data-substitutions='));
  assert.ok(html.includes('data-workspace-tab="athletes"'));
  assert.ok(html.includes('aria-label="Workspace sections"'));
 });
