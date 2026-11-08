@@ -1211,6 +1211,11 @@ function renderFeedback(m){
     <strong>${esc(feedbackWho(f))} · ${esc(f.feedback_type)} · Week ${f.week_number||'-'}</strong>
     <p>${feedbackSummary(f)||'No response details.'}</p>
     <p>Submitted ${esc(fmtDate(f.created_at))}${f.reviewed_at?' · Reviewed '+esc(fmtDate(f.reviewed_at)):''}</p>
+    <details><summary>Internal coaching note${f.admin_reply?' · Saved':''}</summary>
+      <p class="muted mini">Private Coach Command note. Not sent to the athlete or parent.</p>
+      <textarea data-feedback-note maxlength="1500" rows="3" aria-label="Internal note for ${esc(feedbackWho(f))}">${esc(f.admin_reply||'')}</textarea>
+      <button class="btn ghost" data-save-feedback-note="${esc(f.id)}">Save Internal Note</button>
+    </details>
   </div><div class="row"><span class="pill">${esc(feedbackLabel(f))}</span>${feedbackNeedsReview(f)?`<button class="btn ghost" data-review="${f.id}">Mark Reviewed</button>`:''}</div></div>`).join('')||'<div class="card muted">No feedback yet.</div>'}</div>`;
 }
 
@@ -1481,6 +1486,25 @@ document.addEventListener('click',async e=>{
   if(e.target.id==='saveHubMessage')return saveHubMessage();
   if(e.target.id==='addSwapRow'){
     const holder=document.getElementById('swapRows');if(holder)holder.insertAdjacentHTML('beforeend',`<div class="card" data-swap-row><div class="formgrid"><label>Replace<input list="exerciseOptions" data-swap-from></label><label>With<input list="exerciseOptions" data-swap-to></label><label class="wide">Note<input data-swap-note></label></div></div>`);return;
+  }
+
+  const noteSave=e.target.closest('[data-save-feedback-note]');
+  if(noteSave){
+    const id=noteSave.dataset.saveFeedbackNote;
+    const field=noteSave.parentElement?.querySelector('[data-feedback-note]');
+    const note=String(field?.value||'').trim();
+    if(!id||!field||note.length>1500){alert('Invalid feedback note.');return;}
+    noteSave.disabled=true;
+    try{
+      const {data,error}=await sb.from('feedback').update({admin_reply:note||null}).eq('id',id).select('id,admin_reply').single();
+      if(error)throw error;
+      if(data?.id!==id)throw new Error('Feedback note was not confirmed as saved.');
+      await load();
+    }catch(error){
+      noteSave.disabled=false;
+      alert(error?.message||'Could not save feedback note. Please retry.');
+    }
+    return;
   }
 
   const rv=e.target.closest('[data-review]');
