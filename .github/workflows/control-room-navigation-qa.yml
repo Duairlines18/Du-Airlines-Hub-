@@ -1,0 +1,24 @@
+name: Control Room mobile and desktop navigation QA
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'qa/control-room-navigation.browser.cjs'
+      - '.github/workflows/control-room-navigation-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-navigation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned browser QA dependencies
+        run: |
+          npm install --no-save playwright@1.62.1
+          npx playwright install --with-deps chromium
+      - name: Verify phone and laptop Control Room routing without real user data
+        run: node qa/control-room-navigation.browser.cjs
