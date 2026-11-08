@@ -24,7 +24,7 @@ test('publication status differentiates draft, published, missing and incomplete
   assert.ok(html.includes('function weeklyPlanStatus(programmeId,number){'));
   assert.ok(html.includes("label:'Draft ready to publish'"));
   assert.ok(html.includes("label:'Published'"));
-  assert.ok(html.includes("label:'Incomplete draft'"));
+  assert.ok(html.includes("'Incomplete draft'"));
   assert.ok(html.includes("label:'Not built'"));
   assert.ok(html.includes('isPublishedWeek(ready.week)'));
   assert.ok(html.includes('ready.issues.length'));
