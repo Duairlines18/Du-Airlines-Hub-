@@ -53,12 +53,18 @@ BEGIN
     IF v_target_programme IS NULL THEN RAISE EXCEPTION 'Destination school must have an active programme'; END IF;
   END IF;
 
+  IF v_source.tier_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Tier-specific programme copying requires separate tier mapping';
+  END IF;
   IF v_target_programme=v_source.programme_id THEN
     RAISE EXCEPTION 'Use Duplicate to another week for the same programme';
   END IF;
 
   -- Serializes copies into the same destination programme, including an empty draft week.
   SELECT duration_weeks INTO v_target_duration FROM public.programmes WHERE id=v_target_programme FOR UPDATE;
+  IF EXISTS(SELECT 1 FROM public.programme_tiers t WHERE t.programme_id=v_target_programme) THEN
+    RAISE EXCEPTION 'Destination has tier-specific weeks; select a non-tiered programme';
+  END IF;
   IF v_target_duration IS NULL OR p_target_week_number>v_target_duration THEN
     RAISE EXCEPTION 'Target week is outside the destination programme duration';
   END IF;
@@ -110,7 +116,7 @@ BEGIN
     INTO v_target_week,v_target_status,v_target_published,v_target_verification
   FROM public.programme_weeks pw
   WHERE pw.programme_id=v_target_programme AND pw.week_number=p_target_week_number
-    AND pw.tier_id IS NOT DISTINCT FROM v_source.tier_id
+    AND pw.tier_id IS NULL
   ORDER BY pw.created_at
   LIMIT 1 FOR UPDATE;
 
@@ -135,7 +141,7 @@ BEGIN
       running_focus,strength_focus,event_focus,athlete_education,
       status,verification_status,scheduled_for,published_at
     ) VALUES (
-      v_target_programme,v_source.tier_id,p_target_week_number,
+      v_target_programme,NULL,p_target_week_number,
       v_source.phase,v_source.weekly_objective,
       v_source.running_focus,v_source.strength_focus,v_source.event_focus,
       NULL,'draft','needs_verification',NULL,NULL
