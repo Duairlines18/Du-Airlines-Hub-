@@ -18,6 +18,7 @@ const fixtures={
   ],
   exercises:[{id:'exercise-a',code:'a-march',name:'A-March',active:true,video_url:'https://example.com/a-march.mp4'}],
   programme_weeks:[
+    {id:'week-private-4',programme_id:'programme-private',week_number:4,status:'draft',verification_status:'needs_verification',published_at:null,phase:'Future Work',weekly_objective:'Plan the next focus'},
     {id:'week-private-5',programme_id:'programme-private',week_number:5,status:'live',verification_status:'verified',published_at:'2026-11-01T00:00:00Z',phase:'Movement Foundation'}
   ],
   training_days:[
@@ -98,6 +99,14 @@ function pageSource(){
    assert.equal(await page.locator('details.v3-day-collapse[open]').count(),2);
    assert.equal(await page.locator('details.v3-block-collapse[open]').count(),2);
    assert.equal(await page.locator('[data-copy-week]').count(),0,'obsolete same-programme prompt is removed');
+   await page.locator('[data-select-week="week-private-4"]').click();
+   await page.locator('[data-publish-week="week-private-4"]').click();
+   await page.getByRole('heading',{name:'Week 4 · Plan & Publish'}).waitFor();
+   assert.equal(await page.locator('[data-week-plan-field]').count(),5,'weekly objective and coaching focus fields');
+   assert.equal(await page.locator('[data-save-week-plan]').count(),1,'draft notes can be saved separately');
+   assert.equal(await page.locator('[data-commit-publish-week]').count(),1,'publish requires an explicit separate action');
+   await page.locator('[data-close-modal]').click();
+   await page.locator('[data-select-week="week-private-5"]').click();
    await page.locator('[data-publish-week="week-private-5"]').click();
    await page.getByRole('heading',{name:'Week 5 · Plan & Publish'}).waitFor();
    assert.equal(await page.locator('[data-commit-publish-week]').count(),0,'already published week cannot be republished');
