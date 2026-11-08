@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
-const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261108230100_admin_cross_programme_week_draft_copy.sql'),'utf8');
+const sql=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261108225427_admin_cross_programme_week_draft_copy.sql'),'utf8');
 const js=html.split('<script src="qa/workout-validation.js"></script>\n<script>')[1]?.split('</script>')[0];
 test('workspace JS compiles; compact editor and top publishing preserved',()=>{
  assert.ok(js);new Function(js);
