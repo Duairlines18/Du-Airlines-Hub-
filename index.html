@@ -1306,10 +1306,10 @@ async function persistWeekPlan(weekId){
     updates[key]=elem.value.trim().slice(0,1800);
   }
   const {data,error}=await sb.from('programme_weeks').update(updates)
-    .eq('id',weekId).eq('status','draft').is('published_at',null)
+    .eq('id',weekId).in('status',['draft','scheduled']).is('published_at',null)
     .select('id').maybeSingle();
   if(error)throw error;
-  if(!data)throw new Error('Week has changed or is no longer a draft. Reload before editing.');
+  if(!data)throw new Error('Week has changed or is no longer editable and unpublished. Reload before editing.');
   return updates;
 }
 async function saveWeekPlan(weekId){
