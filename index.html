@@ -104,6 +104,14 @@ window.DU_AIRLINES_ENV = {
 .week-command-toolbar{justify-content:flex-end;margin-bottom:10px}
 @media(max-width:720px){.week-command-row{grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:12px}.week-command-weeks{grid-column:1/-1;grid-row:2}.week-command-review{grid-column:1/-1;justify-content:flex-start}.week-command-row>.btn{grid-column:2;grid-row:1}.week-command-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.week-command-metrics .metric{min-height:86px}.week-command-metrics .metric strong{font-size:25px}.week-command-toolbar{justify-content:flex-start}.week-command-toolbar .btn{font-size:12px}}
+/* Read-only CRM context, subordinate to the live Supabase coaching workspace */
+.crm-brief{margin:12px 0;overflow-wrap:anywhere}
+.crm-brief .toolbar{flex-wrap:wrap;gap:10px}
+.crm-brief-details p{margin:9px 0;line-height:1.55}
+.crm-brief-details details{margin:10px 0}
+.crm-brief-details summary{cursor:pointer;color:var(--gold2)}
+.crm-brief-details details p{white-space:pre-wrap}
+@media(max-width:520px){.crm-brief .toolbar>.btn{width:100%}}
 </style></head><body>
 <section id="login" class="login"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Private Control Room</h1><p class="muted">Secure founder access. This page is never linked from the public website.</p><form id="loginForm"><label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required><p id="loginErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Log in</button><div class="login-links"><button type="button" class="linkbtn" id="forgotPassword">Forgot password?</button></div></form><div id="setupNotice" class="notice hidden">Supabase is not configured yet. Add your project values to <span class="code">config.js</span>.</div></div></section>
 <section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
@@ -140,6 +148,7 @@ const state={
   loadErrors:[],
   athleteView:'all',
   feedbackFocus:null,
+  crmBriefs:{},
   overviewShowAll:false,
   overviewAllFeedback:false
 };
@@ -1129,6 +1138,41 @@ async function publishProgrammeWeek(weekId){
   }catch(error){alert(error.message||'Unable to publish this programme week.');}
 }
 
+function crmBriefMarkup(type,id){
+  if(!id)return '';
+  const key=type+':'+id,entry=state.crmBriefs[key];
+  const current=entry?.data;
+  const action=`<button class="btn ghost" data-load-crm="${esc(key)}" ${entry?.loading?'disabled':''}>${entry?.loading?'Loading…':current?'Refresh CRM':'Load CRM context'}</button>`;
+  let body='<p class="muted mini">Read-only coaching and relationship notes from Airtable. Supabase above remains the source of truth for live programmes and feedback.</p>';
+  if(entry?.error)body+=`<p class="muted mini" role="status">${esc(entry.error)}</p>`;
+  if(current?.linked===false)body+='<p class="muted mini">No verified CRM record linked to this profile yet. Training delivery is unaffected.</p>';
+  if(current?.linked){
+    const table=type==='athlete'?'tblTIoYy1fVywtv3E':'tblDKvlLZ1d4iD5nS';
+    const url=typeof current.recordId==='string'&&/^rec[A-Za-z0-9]{14}$/.test(current.recordId)?'https://airtable.com/appw9nNcbuqFdiRTT/'+table+'/'+current.recordId:null;
+    body+=type==='athlete'
+      ?`<div class="crm-brief-details"><p><strong>CRM programme:</strong> ${esc(current.programme||'—')} · <strong>CRM week:</strong> ${esc(current.crmWeek??'—')}</p><p><strong>CRM delivery:</strong> ${esc(current.deliveryStatus||'—')} · <strong>Sync health:</strong> ${esc(current.syncHealth||'Not recorded')}</p><p><strong>Next coaching decision:</strong> ${esc(current.nextDecision||'No decision recorded')}</p>${current.continuity?`<details><summary>Continuity notes</summary><p class="muted">${esc(current.continuity)}</p></details>`:''}${current.lastSync?`<p class="muted mini">Last CRM sync: ${esc(current.lastSync)}. Verify against current live week above.</p>`:''}</div>`
+      :`<div class="crm-brief-details"><p><strong>CRM account:</strong> ${esc(current.account||'—')}</p><p><strong>Sales stage:</strong> ${esc(current.stage||current.status||'—')}</p><p><strong>Next relationship action:</strong> ${esc(current.nextAction||'None recorded')}</p>${current.followUp?`<p class="muted mini">Follow-up: ${esc(current.followUp)}</p>`:''}${current.summary?`<details><summary>School relationship notes</summary><p class="muted">${esc(current.summary)}</p></details>`:''}</div>`;
+    if(url)body+=`<a class="btn ghost" href="${url}" target="_blank" rel="noopener noreferrer">Open full Airtable record</a>`;
+  }
+  return `<section class="card crm-brief"><div class="toolbar"><div><div class="kicker">Airtable CRM</div><h3>Coaching & relationship context</h3></div>${action}</div>${body}</section>`;
+}
+async function loadCrmBrief(type,id){
+  if(!sb||!['athlete','school'].includes(type)||!id)return;
+  const key=type+':'+id;
+  if(state.crmBriefs[key]?.loading)return;
+  state.crmBriefs[key]={...state.crmBriefs[key],loading:true,error:''};
+  render();
+  try{
+    const {data,error}=await sb.functions.invoke('control-room-crm',{body:{type,id}});
+    if(error)throw error;
+    if(!data||typeof data!=='object')throw new Error('Invalid response');
+    state.crmBriefs[key]={loading:false,data,error:''};
+  }catch{
+    state.crmBriefs[key]={loading:false,error:'CRM could not be loaded. Check its secure server connection or try again.',data:null};
+  }
+  if(['athlete-workspace','programme-editor'].includes(state.page))render();
+}
+
 function renderProgrammeEditor(m){
   const d=contextDetails();
   if(!d){state.page='dashboard';render();return;}
@@ -1156,6 +1200,7 @@ function renderProgrammeEditor(m){
   const programmeHtml=week?`<section class="v3-section"><div class="toolbar"><div><div class="kicker">Week ${selectedWeekNumber}</div><h2>${esc(week.phase||'Programme Week')}</h2><p class="muted">${esc(week.weekly_objective||'No weekly objective yet.')} · Last changed ${esc(fmtDate(week.updated_at||week.published_at||week.created_at))}</p></div><div class="v3-health"><span class="pill">${isPublishedWeek(week)?'Published / visible':'Draft / hidden'}</span><span class="pill ${readiness.level==='incomplete'?'v3-status-bad':'v3-status-ready'}">${esc(readiness.label)}</span></div></div>${readiness.issues.length?`<div class="notice v3-status-bad"><strong>Not ready:</strong> ${esc(readiness.issues.join(' · '))}</div>`:''}${latestFeedback?`<div class="card" style="margin-bottom:14px"><div class="kicker">Latest Week Feedback</div><p>${feedbackSummary(latestFeedback)||'No response details.'}</p></div>`:''}<div class="v3-list">${wholeWeek||'<div class="card muted">No training days built for this week.</div>'}</div><div class="v3-inline-actions"><button class="btn primary" data-add-day="${week.id}">+ Training Day</button><button class="btn ghost" data-copy-week="${week.id}">Copy Week</button><button class="btn ghost" data-publish-week="${week.id}">Publish Week</button></div></section>`:'<div class="card muted">No programme week selected.</div>';
   const tab=state.workspaceTab||'programme';
   m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><button class="btn ghost" data-page="${backPage}">← Back</button><div class="kicker" style="margin-top:16px">${esc(typeLabel)}</div><h1>${esc(label)}</h1><p class="muted">${esc(programme?.name||'Programme')} · Current Week ${currentWeek}</p></div><div class="v3-actions"><button class="btn primary" data-workspace-current>Current Week</button><button class="btn ghost" data-workspace-tab="feedback">Feedback (${allFeedback.filter(feedbackNeedsReview).length})</button>${athleteId?`<button class="btn ghost" data-substitutions="${athleteId}">Exercise Swaps</button>`:''}${athleteId?`<button class="btn ghost" data-edit-athlete="${athleteId}">Manage Athlete</button>`:''}${d.ctx.type==='cohort'&&cohort?.id?`<button class="btn ghost" data-edit-cohort="${cohort.id}">${isSchoolCohort(cohort)?'School Settings':'Group Settings'}</button>`:''}</div></div>
+  ${d.ctx.type==='athlete'?crmBriefMarkup('athlete',account?.id):d.ctx.type==='cohort'&&isSchoolCohort(cohort)?crmBriefMarkup('school',cohort?.id):''}
   <div class="context-grid"><div class="card"><span class="muted mini">Current</span><strong>Week ${currentWeek}</strong></div><div class="card"><span class="muted mini">Built</span><strong>${weeks.length} weeks</strong></div><div class="card"><span class="muted mini">Viewing</span><strong>Week ${selectedWeekNumber}</strong></div><div class="card"><span class="muted mini">Feedback</span><strong>${allFeedback.filter(feedbackNeedsReview).length} waiting</strong></div></div>
   <section class="v3-section"><div class="kicker">Full Programme</div><h2>Previous, current and saved next weeks</h2><div class="v3-week-strip">${weekStrip}</div></section>
   <div class="v3-subnav" role="group" aria-label="Workspace sections"><button data-workspace-tab="programme" class="${tab==='programme'?'active':''}">Programme</button>${cohort?.id&&isSchoolCohort(cohort)?`<button data-workspace-tab="athletes" class="${tab==='athletes'?'active':''}">Athletes (${schoolAthletes.length})</button>`:''}<button data-workspace-tab="feedback" class="${tab==='feedback'?'active':''}">Feedback (${allFeedback.length})</button><button data-workspace-tab="hub" class="${tab==='hub'?'active':''}">Hub Content</button><button data-workspace-tab="access" class="${tab==='access'?'active':''}">Access</button></div>
@@ -1579,6 +1624,13 @@ document.addEventListener('click',async e=>{
 
   const currentWeekAction=e.target.closest('[data-workspace-current]');
   if(currentWeekAction){state.selectedWeekId=null;state.workspaceTab='programme';render();return;}
+
+  const loadCrm=e.target.closest('[data-load-crm]');
+  if(loadCrm){
+    const [type,id]=String(loadCrm.dataset.loadCrm||'').split(':');
+    await loadCrmBrief(type,id);
+    return;
+  }
 
   const wt=e.target.closest('[data-workspace-tab]');
   if(wt){state.workspaceTab=wt.dataset.workspaceTab||'programme';render();return;}
