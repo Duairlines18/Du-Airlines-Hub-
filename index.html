@@ -95,7 +95,7 @@ const activeAccount=a=>a?.access_status==='active';
 const isPrivateAthlete=a=>!!a?.athlete_user_id;
 const isParentManaged=a=>!!a?.parent_user_id;
 const athleteKind=a=>isParentManaged(a)?'Parent-managed':isPrivateAthlete(a)?'Private Athlete':'School / legacy profile';
-const feedbackNeedsReview=f=>f.status!=='no_change'&&!f.reviewed_at;
+const feedbackNeedsReview=f=>!f.reviewed_at;
 const directProgrammeAthlete=a=>!!a?.programme_id;
 const athleteCurrentWeek=a=>{
   const cohort=cohortFor(a?.cohort_id);
@@ -229,11 +229,12 @@ const exerciseMatch=value=>{
 const exerciseOptionsList=()=>`<datalist id="exerciseOptions">${state.exercises.filter(e=>e.active!==false).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))).map(e=>`<option value="${esc(e.name||e.code)}">${esc(e.category_slug||'Exercise')} · ${esc(e.code||'')}</option>`).join('')}</datalist>`;
 
 const feedbackLabel=f=>{
-  if(f.status==='adjustment_flagged')return 'Adjustment flagged';
-  if(f.status==='reviewed')return 'Review';
-  if(f.status==='waiting')return 'Waiting';
-  if(f.status==='no_change')return 'No change';
-  return f.status||'Unknown';
+  if(f.reviewed_at)return 'Coach reviewed';
+  if(f.status==='adjustment_flagged')return 'Adjustment flagged · Needs review';
+  if(f.status==='reviewed')return 'Needs review';
+  if(f.status==='waiting')return 'Waiting · Needs review';
+  if(f.status==='no_change')return 'No change · Needs review';
+  return 'Needs review';
 };
 
 function nav(){
