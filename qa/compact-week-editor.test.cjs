@@ -25,7 +25,7 @@ test('prescription / day / block actions and videos remain accessible',()=>{
 });
 test('copy remains within source programme, with no new cross-athlete copy claim or overwrite',()=>{
  assert.ok(html.includes('title="Duplicate within this programme only"'));
- assert.ok(html.includes('Duplicate to another week'));
+ assert.ok(!html.includes('>Duplicate to another week</button>'));
  assert.ok(html.includes("sb.rpc('admin_copy_programme_week'"));
  assert.ok(html.includes('The copied week will stay Draft / hidden'));
  assert.ok(html.includes('data-publish-week='));
@@ -34,6 +34,6 @@ test('action toolbar is before expanding week content, not hidden at bottom',()=
  const start=html.indexOf('const programmeHtml=week?');
  const end=html.indexOf("const tab=state.workspaceTab",start);
  const section=html.slice(start,end);
- assert.ok(section.indexOf('data-copy-week=')<section.indexOf('${wholeWeek'));
+ assert.ok(!section.includes('data-copy-week='));
  assert.ok(section.indexOf('data-publish-week=')<section.indexOf('${wholeWeek'));
 });
