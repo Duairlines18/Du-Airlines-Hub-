@@ -39,6 +39,47 @@ window.DU_AIRLINES_ENV = {
 
 
 @media(max-width:850px){.v3-person,.v3-attention{grid-template-columns:1fr}.system-grid{grid-template-columns:1fr 1fr}}@media(max-width:520px){.system-grid{grid-template-columns:1fr}.v3-hero{display:block}.v3-actions{margin-top:12px}}
+/* Feedback and roster operations: responsive, accessible, no data-model changes */
+.metric-action{display:flex;flex-direction:column;align-items:flex-start;text-align:left;cursor:pointer;color:var(--cream);font:inherit}
+.metric-action strong{font-size:28px;color:var(--gold2)}.metric-action small{color:var(--gold2);margin-top:10px}
+.metric-action:focus-visible,.v3-tab:focus-visible,.feedback-person summary:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+.roster-filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px}
+.feedback-group-list{display:grid;gap:12px;margin-top:16px}
+.feedback-person{border:1px solid var(--hair);border-radius:14px;background:var(--panel);overflow:hidden}
+.feedback-person-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:17px;list-style:none}
+.feedback-person-summary::-webkit-details-marker{display:none}
+.feedback-person-summary span:first-child{min-width:0}.feedback-person-summary strong{display:block;font-size:17px;overflow-wrap:anywhere}
+.feedback-person-summary small{display:block;color:var(--sage);margin-top:5px}
+.feedback-expand{color:var(--gold2);white-space:nowrap}
+.feedback-history{padding:0 16px 16px}.feedback-record{border-top:1px solid var(--hair);padding:16px 0}
+.feedback-record:first-child{border-top:1px solid var(--hair)}
+.feedback-record-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.feedback-record p{line-height:1.55;color:var(--sage);overflow-wrap:anywhere}
+.feedback-record .feedback-note{margin:8px 0 14px}.feedback-note summary{cursor:pointer}
+.feedback-note textarea{width:100%;max-width:100%;margin:10px 0}
+.v3-person-actions{flex-wrap:wrap}.v3-person-actions .btn{white-space:normal}
+@media(max-width:850px){
+  .top{padding:10px 12px;gap:10px}
+  .top .global-search-wrap{flex:1;min-width:0;margin:0}
+  .top .global-search{width:100%;min-width:0;text-overflow:ellipsis}
+  .top #logout{flex-shrink:0;padding:9px 12px}
+  nav{scrollbar-width:thin;scroll-padding:12px}
+  nav button{padding:10px 12px}
+  .v3-person{gap:10px}
+}
+@media(max-width:520px){
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .grid .metric{min-width:0;padding:12px}
+  .grid .metric strong{font-size:25px}
+  .grid .metric span{font-size:12px}
+  .v3-person{padding:14px}
+  .v3-person-actions{gap:8px}
+  .v3-person-actions .btn{font-size:13px;padding:9px 11px}
+  .feedback-person-summary{padding:13px}
+  .feedback-history{padding:0 12px 12px}
+  .feedback-record-head .pill{max-width:100%;white-space:normal}
+  main{padding:14px}
+}
 </style></head><body>
 <section id="login" class="login"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Private Control Room</h1><p class="muted">Secure founder access. This page is never linked from the public website.</p><form id="loginForm"><label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required><p id="loginErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Log in</button><div class="login-links"><button type="button" class="linkbtn" id="forgotPassword">Forgot password?</button></div></form><div id="setupNotice" class="notice hidden">Supabase is not configured yet. Add your project values to <span class="code">config.js</span>.</div></div></section>
 <section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
@@ -72,14 +113,17 @@ const state={
   selectedWeekId:null,
   athleteWorkspaceTab:'programme',
   workspaceTab:'programme',
-  loadErrors:[]
+  loadErrors:[],
+  athleteView:'all',
+  feedbackFocus:null
 };
 
-const pages=['dashboard','athletes','cohorts','programmes','feedback','system'];
+const pages=['dashboard','athletes','cohorts','cohort-programmes','programmes','feedback','system'];
 const labels={
   dashboard:'Overview',
   athletes:'Athletes',
   cohorts:'Schools',
+  'cohort-programmes':'Programme Groups',
   programmes:'Programme Builder',
   feedback:'Feedback',
   system:'System'
@@ -94,7 +138,9 @@ const programmeName=id=>byId(state.programmes,id)?.name||'Not assigned';
 const activeAccount=a=>a?.access_status==='active';
 const isPrivateAthlete=a=>!!a?.athlete_user_id;
 const isParentManaged=a=>!!a?.parent_user_id;
-const athleteKind=a=>isParentManaged(a)?'Parent-managed':isPrivateAthlete(a)?'Private Athlete':'School / legacy profile';
+const isSchoolCohort=c=>!!c?.organization_id;
+const isSchoolAthlete=a=>isSchoolCohort(cohortFor(a?.cohort_id))&&!a?.programme_id;
+const athleteKind=a=>isSchoolAthlete(a)?'School Athlete':isParentManaged(a)?'Parent-managed':isPrivateAthlete(a)?'Private Athlete':'Unclassified / legacy';
 const feedbackNeedsReview=f=>!f.reviewed_at;
 const directProgrammeAthlete=a=>!!a?.programme_id;
 const athleteCurrentWeek=a=>{
@@ -319,7 +365,7 @@ function render(){
   nav();
   const m=document.getElementById('main');
   if(state.page==='dashboard'){
-    const activeCohorts=state.cohorts.filter(x=>x.status==='live').length;
+    const activeCohorts=state.cohorts.filter(x=>x.status==='live'&&isSchoolCohort(x)).length;
     const activeAthletes=state.athletes.filter(a=>activeAccount(a)).length;
     const activeProgrammes=new Set([
       ...state.athletes.filter(a=>activeAccount(a)).map(athleteProgrammeId).filter(Boolean),
@@ -328,7 +374,7 @@ function render(){
     const attention=operationalAttention();
     const running=[
       ...state.athletes.filter(a=>activeAccount(a)&&athleteProgrammeId(a)).map(a=>({name:a.full_name||a.display_name||'Athlete',type:'Athlete',week:athleteCurrentWeek(a),pid:athleteProgrammeId(a),id:a.id})),
-      ...state.cohorts.filter(c=>c.status==='live'&&c.programme_id).map(c=>({name:c.name,type:'School',week:c.current_week||1,pid:c.programme_id,id:c.id}))
+      ...state.cohorts.filter(c=>c.status==='live'&&isSchoolCohort(c)&&c.programme_id).map(c=>({name:c.name,type:'School',week:c.current_week||1,pid:c.programme_id,id:c.id}))
     ];
     const healthy=running.filter(x=>['ready','live'].includes(weekReadiness(x.pid,x.week+1).level)).length;
     const urgent=attention.filter(x=>x.priority<=1), review=attention.filter(x=>x.priority===2), feedback=attention.filter(x=>x.priority===3);
@@ -337,8 +383,8 @@ function render(){
       return `<div class="v3-attention"><div><strong>${esc(x.title)}</strong><span>${esc(x.detail)}</span></div><button class="btn ghost" ${action}>Open</button></div>`;
     }).join('')}</div>`:'';
     m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Operations</div><h1>Control Room</h1><p class="muted">Know what needs Coach Du, what is ready, and what is safely running.</p></div><div class="v3-actions"><button class="btn primary" data-page="athletes">Open Athletes</button><button class="btn ghost" data-page="cohorts">Open Schools</button></div></div>
-    <div class="grid">${metric(activeAthletes,'Active Athletes')}${metric(activeCohorts,'Active Schools / Cohorts')}${metric(attention.length,'Items Needing Review')}${metric(healthy,'Next Weeks Ready')}</div>
-    <section class="v3-section"><div class="toolbar"><div><div class="kicker">Nothing Hidden</div><h2>Needs Your Attention</h2><p class="muted">${attention.length?`${attention.length} item${attention.length===1?'':'s'} shown — nothing is silently cut off.`:'No operational action required.'}</p></div></div>
+    <div class="grid"><button class="card metric metric-action" data-roster-filter="active"><strong>${activeAthletes}</strong><span>Active Athletes</span><small>View roster →</small></button><button class="card metric metric-action" data-page="cohorts"><strong>${activeCohorts}</strong><span>Active Schools</span><small>View schools →</small></button><button class="card metric metric-action" data-attention-jump><strong>${attention.length}</strong><span>Items Needing Attention</span><small>View priorities →</small></button><div class="card metric"><strong>${healthy}</strong><span>Next Weeks Ready</span></div></div>
+    <section class="v3-section" id="needsAttention"><div class="toolbar"><div><div class="kicker">Nothing Hidden</div><h2>Needs Your Attention</h2><p class="muted">${attention.length?`${attention.length} item${attention.length===1?'':'s'} shown — nothing is silently cut off.`:'No operational action required.'}</p></div></div>
       ${renderAttentionGroup('Action Now',urgent)}${renderAttentionGroup('Coming To An End',review)}${renderAttentionGroup('Feedback Inbox',feedback)}
       ${!attention.length?'<div class="card"><p class="muted">Nothing requires action right now.</p></div>':''}
     </section>
@@ -348,6 +394,7 @@ function render(){
   if(state.page==='athletes')return renderAthletes(m);
   if(state.page==='professionals')return renderProfessionals(m);
   if(state.page==='cohorts')return renderCohorts(m);
+  if(state.page==='cohort-programmes')return renderProgrammeGroups(m);
   if(state.page==='library')return renderLibrary(m);
   if(state.page==='feedback')return renderFeedback(m);
   if(state.page==='access')return renderAccess(m);
@@ -360,28 +407,33 @@ function render(){
 }
 
 function renderAthletes(m){
-  const active=state.athletes.filter(a=>a.access_status!=='archived');
-  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Roster</div><h1>Athletes</h1><p class="muted">Open a person and see their whole programme, previous weeks, next weeks and feedback in one place.</p></div></div>
-  <input class="search" id="search" placeholder="Search athlete, programme or school…">
-  <div class="v3-list" id="athleteList" style="margin-top:14px">${athleteRows(active)}</div>`;
+  const filters=[['all','All'],['active','Active'],['private','Private'],['parent','Parent-managed'],['school','School Athletes']];
+  const rows=state.athletes.filter(a=>a.access_status!=='archived'&&(
+    state.athleteView==='all'||(state.athleteView==='active'&&activeAccount(a))
+    ||(state.athleteView==='school'&&isSchoolAthlete(a))
+    ||(state.athleteView==='private'&&!isSchoolAthlete(a)&&isPrivateAthlete(a)&&!isParentManaged(a))
+    ||(state.athleteView==='parent'&&!isSchoolAthlete(a)&&isParentManaged(a))
+  ));
+  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">People</div><h1>Athletes</h1><p class="muted">Choose a person to manage training or view their feedback history.</p></div></div>
+  <div class="roster-filters" role="group" aria-label="Athlete filters">${filters.map(([key,label])=>`<button class="v3-tab ${state.athleteView===key?'active':''}" data-athlete-filter="${key}" aria-pressed="${state.athleteView===key}">${label}</button>`).join('')}</div>
+  <input class="search" id="search" aria-label="Search athletes" placeholder="Search athlete, programme or school…">
+  <p class="muted mini">${rows.length} athlete${rows.length===1?'':'s'} in this view</p>
+  <div class="v3-list" id="athleteList">${athleteRows(rows)}</div>`;
 }
-
 function athleteRows(rows){
-   return rows.map(a=>{
-     const cohort=cohortFor(a.cohort_id);
-     const currentWeek=athleteCurrentWeek(a);
-     const programmeId=athleteProgrammeId(a);
-     const programme=programmeId?programmeName(programmeId):'Not assigned';
-     const kind=athleteKind(a);
-     const onboarding=(a.parent_user_id||a.athlete_user_id)?(a.onboarding_complete?'Onboarding complete':'Onboarding pending'):'Shared/legacy record';
-     const actions=(a.parent_user_id||a.athlete_user_id)?accessButtons('athlete',a):'';
-     const searchText=((a.full_name||'')+' '+kind+' '+(cohort?.name||'')+' '+programme).toLowerCase();
-     return `<div class="v3-person" data-search="${esc(searchText)}">
-       <div><strong>${esc(a.full_name||a.display_name||'Unnamed athlete')}</strong>
-       <p>${esc(kind)} · ${esc(programme)} · Week ${esc(currentWeek)} · ${esc(onboarding)}</p></div>
-       <div class="row"><span class="pill">${esc(a.access_status||'pending')}</span>${programmeId?`<button class="btn primary" data-open-athlete="${a.id}">Open Athlete</button>`:`<button class="btn primary" data-edit-athlete="${a.id}">Set Up Programme</button>`}<button class="btn ghost" data-edit-athlete="${a.id}">Profile</button></div>
-     </div>`;
-   }).join('')||'<div class="card muted">No athletes yet.</div>';
+  return rows.map(a=>{
+    const currentWeek=athleteCurrentWeek(a),programmeId=athleteProgrammeId(a);
+    const programme=programmeId?programmeName(programmeId):'Not assigned';
+    const kind=athleteKind(a);
+    const onboarding=(a.parent_user_id||a.athlete_user_id)?(a.onboarding_complete?'Onboarding complete':'Onboarding pending'):'School / legacy access';
+    const searchText=[a.full_name||a.display_name,kind,cohortName(a.cohort_id),programme].join(' ').toLowerCase();
+    const feedbackCount=state.feedback.filter(f=>f.athlete_id===a.id).length;
+    return `<div class="v3-person" data-search="${esc(searchText)}">
+      <div><strong>${esc(a.full_name||a.display_name||'Unnamed athlete')}</strong><p>${esc(kind)} · Week ${esc(currentWeek)} · ${esc(programme)}</p><p>${esc(onboarding)}</p></div>
+      <div class="row v3-person-actions"><span class="pill">${esc(a.access_status||'pending')}</span>${programmeId?`<button class="btn primary" data-open-athlete="${a.id}">Open Athlete</button>`:`<button class="btn primary" data-edit-athlete="${a.id}">Set Up Programme</button>`}
+      <button class="btn ghost" data-feedback-athlete="${a.id}">Feedback (${feedbackCount})</button><button class="btn ghost" data-edit-athlete="${a.id}">Profile</button></div>
+    </div>`;
+  }).join('')||'<div class="card muted">No athletes in this view.</div>';
 }
 
 function renderProfessionals(m){
@@ -444,9 +496,23 @@ function professionalForm(p={}){
   <div class="row" style="margin-top:18px"><button value="cancel" class="btn ghost">Cancel</button><button type="button" class="btn primary" id="saveProfessional">Save Assignment</button></div>`);
 }
 
+function cohortRows(rows,isSchool){
+  return rows.map(c=>{
+    const weeks=programmeWeeksFor(c.programme_id);
+    const next=weekReadiness(c.programme_id,(c.current_week||1)+1);
+    const count=state.athletes.filter(a=>a.cohort_id===c.id).length;
+    return `<div class="v3-person"><div><h3>${esc(c.name)}</h3><p>${isSchool?count+' assigned athlete'+(count===1?'':'s')+' · ':''}Current Week ${c.current_week||1} · ${weeks.length} week${weeks.length===1?'':'s'} built</p><p>${esc(programmeName(c.programme_id))} · ${next.level==='ready'||next.level==='live'?'Next week ready':next.level==='incomplete'?'Next week incomplete':'Next week missing'}</p></div><div class="row v3-person-actions"><span class="pill">${esc(c.status)}</span><button class="btn primary" data-open-cohort="${c.id}">${isSchool?'Open School':'Open Programme'}</button><button class="btn ghost" data-edit-cohort="${c.id}">Settings</button></div></div>`;
+  }).join('')||'<div class="card muted">Nothing in this category yet.</div>';
+}
 function renderCohorts(m){
-  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Schools & Cohorts</div><h1>Schools</h1><p class="muted">Open a cohort and control its programme from the same week-based workspace used for private athletes.</p></div><button class="btn primary" data-add="cohort">Create Cohort</button></div>
-  <div class="v3-list">${state.cohorts.map(c=>{const weeks=programmeWeeksFor(c.programme_id),next=weekReadiness(c.programme_id,(c.current_week||1)+1);return `<div class="v3-person"><div><h3>${esc(c.name)}</h3><p>${esc(programmeName(c.programme_id))} · Current Week ${c.current_week||1} · ${weeks.length} week${weeks.length===1?'':'s'} built · ${next.level==='ready'||next.level==='live'?'Next week ready':next.level==='incomplete'?'Next week incomplete':'Next week missing'}</p></div><div class="row"><span class="pill">${esc(c.status)}</span><button class="btn primary" data-open-cohort="${c.id}">Open School</button><button class="btn ghost" data-edit-cohort="${c.id}">Settings</button></div></div>`}).join('')||'<div class="card muted">No cohorts yet.</div>'}</div>`;
+  const rows=state.cohorts.filter(isSchoolCohort);
+  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">School Partners</div><h1>Schools</h1><p class="muted">School organisations only. Individual private programmes are kept separate.</p></div></div><div class="v3-actions"><button class="btn ghost" data-page="cohort-programmes">View Programme Groups</button></div>
+  <div class="v3-list">${cohortRows(rows,true)}</div>`;
+}
+function renderProgrammeGroups(m){
+  const rows=state.cohorts.filter(c=>!isSchoolCohort(c));
+  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Training Delivery</div><h1>Programme Groups</h1><p class="muted">Individual-athlete containers, shared programmes and QA groups. These are not schools.</p></div><button class="btn ghost" data-add="cohort">Create Group</button></div>
+  <div class="v3-list">${cohortRows(rows,false)}</div>`;
 }
 
 function programmeOptions(selected=''){
@@ -1006,8 +1072,8 @@ function renderProgrammeEditor(m){
   const readiness=week?weekReadiness(programmeId,selectedWeekNumber):{level:'missing',label:'Not built',issues:[]};
   const weekStrip=Array.from({length:duration},(_,i)=>i+1).map(n=>{const w=weeks.find(x=>Number(x.week_number)===n),r=weekReadiness(programmeId,n),status=w&&Number(n)===Number(currentWeek)&&isPublishedWeek(w)?'Live':r.label;return `<button class="v3-week-btn ${w?.id===week?.id?'active':''}" ${w?`data-select-week="${w.id}"`:'disabled'}><strong>Week ${n}</strong><small>${esc(status)}${w?.phase?' · '+esc(w.phase):''}</small></button>`}).join('');
   const wholeWeek=days.map(day=>`<section class="v3-day"><div class="toolbar"><div><div class="kicker">${esc(day.day_key||'Training Day')}</div><h2>${esc(day.title||day.day_key||'Training Day')}</h2><p class="muted">${esc(day.objective||'')}${day.intensity?' · '+esc(day.intensity):''}${day.duration?' · '+esc(day.duration):''}</p></div><div class="row"><button class="btn primary" data-quick-write="${day.id}">Quick Write</button><button class="btn ghost" data-preview-day="${day.id}">Preview</button><button class="btn ghost" data-edit-day="${day.id}">Edit Day</button><button class="btn ghost" data-add-block="${day.id}">+ Block</button></div></div>${blocksForDay(day.id).map(block=>{const c=block.content||{},pres=Array.isArray(c.prescriptions)?c.prescriptions:[],items=Array.isArray(c.items)?c.items:[];return `<div class="v3-block"><div class="v3-block-head"><div><strong>${esc(block.title||block.block_type||'Workout Block')}</strong>${c.focus?`<div class="muted mini">${esc(c.focus)}</div>`:''}</div><div class="row"><button class="btn ghost" data-add-exercise="${block.id}">+ Exercise</button><button class="btn ghost" data-edit-block="${block.id}">Edit Block</button></div></div>${pres.length?pres.map((p,i)=>`<div class="v3-prescription"><div class="row" style="justify-content:space-between"><div style="min-width:0;flex:1">${prettyPrescription(p)}</div><button class="btn ghost" data-remove-prescription="${block.id}" data-prescription-index="${i}">Remove</button></div></div>`).join(''):items.map(x=>`<div class="v3-prescription">${esc(x)}</div>`).join('')||'<p class="muted mini">No exercises yet.</p>'}</div>`}).join('')}</section>`).join('');
-  const backPage=d.ctx.type==='cohort'?'cohorts':'athletes',typeLabel=d.ctx.type==='cohort'?'School / Cohort':direct?'Individual Programme':'Athlete';
-  const accessHtml=athleteId?`<div class="card"><h3>Account Access</h3><p class="muted">Status: ${esc(account?.access_status||'pending')} · ${esc(account?.access_reason||'')}</p><div class="row">${accessButtons('athlete',account)}</div></div>`:`<div class="card"><h3>School Access</h3><p class="muted">Athlete and staff codes attached to this cohort.</p>${state.accessCodes.filter(c=>c.cohort_id===cohort?.id).map(c=>`<div class="v3-attention"><div><strong>${esc(c.label||'Access code')}</strong><span>${esc(c.code_type==='staff'?'Staff':'Athlete')} · ${esc(c.status)} · Last used ${esc(c.last_used_at?fmtDate(c.last_used_at):'Never')}</span></div><div class="row">${c.status==='active'?`<button class="btn ghost" data-code-id="${c.id}" data-code-action="pause">Pause</button>`:''}${c.status==='paused'?`<button class="btn ghost" data-code-id="${c.id}" data-code-action="activate">Activate</button>`:''}</div></div>`).join('')||'<p class="muted">No shared access codes yet.</p>'}<div class="row" style="margin-top:12px"><button class="btn primary" data-code-type="cohort">New Athlete Code</button><button class="btn ghost" data-code-type="staff">New Staff Code</button></div></div>`;
+  const backPage=d.ctx.type==='cohort'?(isSchoolCohort(cohort)?'cohorts':'cohort-programmes'):'athletes',typeLabel=d.ctx.type==='cohort'?(isSchoolCohort(cohort)?'School':'Programme Group'):direct?'Individual Programme':'Athlete';
+  const accessHtml=athleteId?`<div class="card"><h3>Account Access</h3><p class="muted">Status: ${esc(account?.access_status||'pending')} · ${esc(account?.access_reason||'')}</p><div class="row">${accessButtons('athlete',account)}</div></div>`:`<div class="card"><h3>${isSchoolCohort(cohort)?'School Access':'Group Access'}</h3><p class="muted">Athlete and staff codes attached to this cohort.</p>${state.accessCodes.filter(c=>c.cohort_id===cohort?.id).map(c=>`<div class="v3-attention"><div><strong>${esc(c.label||'Access code')}</strong><span>${esc(c.code_type==='staff'?'Staff':'Athlete')} · ${esc(c.status)} · Last used ${esc(c.last_used_at?fmtDate(c.last_used_at):'Never')}</span></div><div class="row">${c.status==='active'?`<button class="btn ghost" data-code-id="${c.id}" data-code-action="pause">Pause</button>`:''}${c.status==='paused'?`<button class="btn ghost" data-code-id="${c.id}" data-code-action="activate">Activate</button>`:''}</div></div>`).join('')||'<p class="muted">No shared access codes yet.</p>'}<div class="row" style="margin-top:12px"><button class="btn primary" data-code-type="cohort">New Athlete Code</button><button class="btn ghost" data-code-type="staff">New Staff Code</button></div></div>`;
   const feedbackHtml=`<div class="card"><div class="toolbar"><div><h3>${esc(label)} Feedback</h3><p class="muted">${allFeedback.length} submission${allFeedback.length===1?'':'s'} on record.</p></div></div>${allFeedback.map(f=>`<div class="v3-feedback-row"><strong>Week ${f.week_number||'—'} · ${esc(f.feedback_type||'Feedback')}</strong><p>${feedbackSummary(f)||'No response details.'}</p><p class="muted mini">${esc(fmtDate(f.created_at))}</p>${feedbackNeedsReview(f)?`<button class="btn ghost" data-review="${f.id}">Mark Reviewed</button>`:''}</div>`).join('')||'<p class="muted">No feedback yet.</p>'}</div>`;
   const hubAudienceCount=athleteId?state.athletes.filter(a=>athleteProgrammeId(a)===programmeId&&a.access_status==='active').length:membersInCohort(cohort?.id);
   const hubAudienceLabel=athleteId&&hubAudienceCount===1?`${label} only`:athleteId?`${hubAudienceCount} active athletes using this programme`:`${hubAudienceCount} athlete account${hubAudienceCount===1?'':'s'} in this cohort`;
@@ -1202,22 +1268,48 @@ function feedbackSummary(f){
   ].filter(x=>x[1]!==undefined&&x[1]!==null&&String(x[1]).trim()!=='');
   return fields.map(([k,v])=>`<span><strong>${esc(k)}:</strong> ${esc(v)}</span>`).join(' · ');
 }
-function renderFeedback(m){
-  const rows=[...state.feedback].sort((a,b)=>{
-    const ar=feedbackNeedsReview(a)?0:1,br=feedbackNeedsReview(b)?0:1;
-    return ar-br||new Date(b.created_at)-new Date(a.created_at);
-  });
-  m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Feedback</h1><p class="muted">${rows.filter(feedbackNeedsReview).length} item(s) need review. Original athlete/parent/professional/coach answers are preserved.</p></div></div>
-  <div class="list">${rows.map(f=>`<div class="item"><div>
-    <strong>${esc(feedbackWho(f))} · ${esc(f.feedback_type)} · Week ${f.week_number||'-'}</strong>
+function feedbackOwnerKey(f){
+  return f.athlete_id?'athlete:'+f.athlete_id:f.professional_member_id?'professional:'+f.professional_member_id:
+    f.staff_id?'staff:'+f.staff_id:f.cohort_id?'cohort:'+f.cohort_id:'unassigned:'+f.id;
+}
+function feedbackTypeLabel(type){
+  return ({athlete_weekly:'Weekly Check-in',athlete_biweekly:'Biweekly Check-in',
+    parent_weekly:'Parent Check-in',coach_weekly:'Coach Check-in',
+    professional_weekly:'Professional Check-in',athlete_issue:'Training Issue'})[type]||String(type||'Feedback').replace(/_/g,' ');
+}
+function feedbackRow(f){
+  return `<article class="feedback-record">
+    <div class="feedback-record-head"><strong>Week ${esc(f.week_number||'—')} · ${esc(feedbackTypeLabel(f.feedback_type))}</strong><span class="pill">${esc(feedbackLabel(f))}</span></div>
     <p>${feedbackSummary(f)||'No response details.'}</p>
-    <p>Submitted ${esc(fmtDate(f.created_at))}${f.reviewed_at?' · Reviewed '+esc(fmtDate(f.reviewed_at)):''}</p>
-    <details><summary>Internal coaching note${f.admin_reply?' · Saved':''}</summary>
+    <p class="muted mini">Submitted ${esc(fmtDate(f.created_at))}${f.reviewed_at?' · Reviewed '+esc(fmtDate(f.reviewed_at)):''}</p>
+    <details class="feedback-note"><summary>Internal coaching note${f.admin_reply?' · Saved':''}</summary>
       <p class="muted mini">Private Coach Command note. Not sent to the athlete or parent.</p>
       <textarea data-feedback-note maxlength="1500" rows="3" aria-label="Internal note for ${esc(feedbackWho(f))}">${esc(f.admin_reply||'')}</textarea>
       <button class="btn ghost" data-save-feedback-note="${esc(f.id)}">Save Internal Note</button>
     </details>
-  </div><div class="row"><span class="pill">${esc(feedbackLabel(f))}</span>${feedbackNeedsReview(f)?`<button class="btn ghost" data-review="${f.id}">Mark Reviewed</button>`:''}</div></div>`).join('')||'<div class="card muted">No feedback yet.</div>'}</div>`;
+    ${feedbackNeedsReview(f)?`<button class="btn ghost" data-review="${esc(f.id)}">Mark Reviewed</button>`:''}
+  </article>`;
+}
+function renderFeedback(m){
+  const rows=[...state.feedback].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  const chosen=state.feedbackFocus?rows.filter(f=>feedbackOwnerKey(f)===state.feedbackFocus):rows;
+  const byPerson=new Map();
+  for(const f of chosen){
+    const key=feedbackOwnerKey(f);
+    if(!byPerson.has(key))byPerson.set(key,{key,name:feedbackWho(f),items:[]});
+    byPerson.get(key).items.push(f);
+  }
+  const groups=[...byPerson.values()].sort((a,b)=>
+    Number(b.items.some(feedbackNeedsReview))-Number(a.items.some(feedbackNeedsReview))
+    ||new Date(b.items[0].created_at)-new Date(a.items[0].created_at)
+  );
+  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Coaching Feedback</div><h1>${state.feedbackFocus?'Athlete Feedback':'Feedback'}</h1><p class="muted">One history per person. Open a name to review all weeks and save private notes.</p></div></div>
+  <div class="v3-actions">${state.feedbackFocus?'<button class="btn ghost" data-feedback-clear>All Feedback</button>':''}<button class="btn ghost" data-roster-filter="all">Athlete Roster</button></div>
+  <div class="feedback-group-list">${groups.map(g=>{
+    const pending=g.items.filter(feedbackNeedsReview).length;
+    return `<details class="feedback-person" ${state.feedbackFocus?'open':''}><summary class="feedback-person-summary"><span><strong>${esc(g.name)}</strong><small>${g.items.length} submission${g.items.length===1?'':'s'} · ${pending} to review</small></span><span class="feedback-expand">View history</span></summary>
+      <div class="feedback-history">${g.items.map(feedbackRow).join('')}</div></details>`;
+  }).join('')||'<div class="card muted">No feedback for this athlete yet.</div>'}</div>`;
 }
 
 function renderAccess(m){
@@ -1375,8 +1467,19 @@ document.addEventListener('click',async e=>{
     if(type==='programme'){state.page='programmes';render();return;}
     if(type==='exercise'){state.page='library';render();return;}
   }
+  const attentionJump=e.target.closest('[data-attention-jump]');
+  if(attentionJump){document.getElementById('needsAttention')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  const rosterNav=e.target.closest('[data-roster-filter]');
+  if(rosterNav){state.athleteView=rosterNav.dataset.rosterFilter||'all';state.page='athletes';render();return;}
+  const athleteFilter=e.target.closest('[data-athlete-filter]');
+  if(athleteFilter){state.athleteView=athleteFilter.dataset.athleteFilter||'all';render();return;}
+  const athleteFeedback=e.target.closest('[data-feedback-athlete]');
+  if(athleteFeedback){state.feedbackFocus='athlete:'+athleteFeedback.dataset.feedbackAthlete;state.page='feedback';render();return;}
+  const clearFeedback=e.target.closest('[data-feedback-clear]');
+  if(clearFeedback){state.feedbackFocus=null;render();return;}
+
   const p=e.target.closest('[data-page]');
-  if(p){state.page=p.dataset.page;render();return;}
+  if(p){state.page=p.dataset.page;if(state.page==='feedback')state.feedbackFocus=null;render();return;}
 
   const add=e.target.closest('[data-add]');
   if(add){
