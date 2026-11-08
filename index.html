@@ -366,28 +366,33 @@ function render(){
 }
 
 function renderAthletes(m){
-  const active=state.athletes.filter(a=>a.access_status!=='archived');
-  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Roster</div><h1>Athletes</h1><p class="muted">Open a person and see their whole programme, previous weeks, next weeks and feedback in one place.</p></div></div>
-  <input class="search" id="search" placeholder="Search athlete, programme or school…">
-  <div class="v3-list" id="athleteList" style="margin-top:14px">${athleteRows(active)}</div>`;
+  const filters=[['all','All'],['active','Active'],['private','Private'],['parent','Parent-managed'],['school','School Athletes']];
+  const rows=state.athletes.filter(a=>a.access_status!=='archived'&&(
+    state.athleteView==='all'||(state.athleteView==='active'&&activeAccount(a))
+    ||(state.athleteView==='school'&&isSchoolAthlete(a))
+    ||(state.athleteView==='private'&&!isSchoolAthlete(a)&&isPrivateAthlete(a)&&!isParentManaged(a))
+    ||(state.athleteView==='parent'&&!isSchoolAthlete(a)&&isParentManaged(a))
+  ));
+  m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">People</div><h1>Athletes</h1><p class="muted">Choose a person to manage training or view their feedback history.</p></div></div>
+  <div class="roster-filters" role="group" aria-label="Athlete filters">${filters.map(([key,label])=>`<button class="v3-tab ${state.athleteView===key?'active':''}" data-athlete-filter="${key}" aria-pressed="${state.athleteView===key}">${label}</button>`).join('')}</div>
+  <input class="search" id="search" aria-label="Search athletes" placeholder="Search athlete, programme or school…">
+  <p class="muted mini">${rows.length} athlete${rows.length===1?'':'s'} in this view</p>
+  <div class="v3-list" id="athleteList">${athleteRows(rows)}</div>`;
 }
-
 function athleteRows(rows){
-   return rows.map(a=>{
-     const cohort=cohortFor(a.cohort_id);
-     const currentWeek=athleteCurrentWeek(a);
-     const programmeId=athleteProgrammeId(a);
-     const programme=programmeId?programmeName(programmeId):'Not assigned';
-     const kind=athleteKind(a);
-     const onboarding=(a.parent_user_id||a.athlete_user_id)?(a.onboarding_complete?'Onboarding complete':'Onboarding pending'):'Shared/legacy record';
-     const actions=(a.parent_user_id||a.athlete_user_id)?accessButtons('athlete',a):'';
-     const searchText=((a.full_name||'')+' '+kind+' '+(cohort?.name||'')+' '+programme).toLowerCase();
-     return `<div class="v3-person" data-search="${esc(searchText)}">
-       <div><strong>${esc(a.full_name||a.display_name||'Unnamed athlete')}</strong>
-       <p>${esc(kind)} · ${esc(programme)} · Week ${esc(currentWeek)} · ${esc(onboarding)}</p></div>
-       <div class="row"><span class="pill">${esc(a.access_status||'pending')}</span>${programmeId?`<button class="btn primary" data-open-athlete="${a.id}">Open Athlete</button>`:`<button class="btn primary" data-edit-athlete="${a.id}">Set Up Programme</button>`}<button class="btn ghost" data-edit-athlete="${a.id}">Profile</button></div>
-     </div>`;
-   }).join('')||'<div class="card muted">No athletes yet.</div>';
+  return rows.map(a=>{
+    const currentWeek=athleteCurrentWeek(a),programmeId=athleteProgrammeId(a);
+    const programme=programmeId?programmeName(programmeId):'Not assigned';
+    const kind=athleteKind(a);
+    const onboarding=(a.parent_user_id||a.athlete_user_id)?(a.onboarding_complete?'Onboarding complete':'Onboarding pending'):'School / legacy access';
+    const searchText=[a.full_name||a.display_name,kind,cohortName(a.cohort_id),programme].join(' ').toLowerCase();
+    const feedbackCount=state.feedback.filter(f=>f.athlete_id===a.id).length;
+    return `<div class="v3-person" data-search="${esc(searchText)}">
+      <div><strong>${esc(a.full_name||a.display_name||'Unnamed athlete')}</strong><p>${esc(kind)} · Week ${esc(currentWeek)} · ${esc(programme)}</p><p>${esc(onboarding)}</p></div>
+      <div class="row v3-person-actions"><span class="pill">${esc(a.access_status||'pending')}</span>${programmeId?`<button class="btn primary" data-open-athlete="${a.id}">Open Athlete</button>`:`<button class="btn primary" data-edit-athlete="${a.id}">Set Up Programme</button>`}
+      <button class="btn ghost" data-feedback-athlete="${a.id}">Feedback (${feedbackCount})</button><button class="btn ghost" data-edit-athlete="${a.id}">Profile</button></div>
+    </div>`;
+  }).join('')||'<div class="card muted">No athletes in this view.</div>';
 }
 
 function renderProfessionals(m){
