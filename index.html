@@ -1264,28 +1264,6 @@ async function confirmCrossProgrammeCopy(button){
     alert('Week '+targetWeekNo+' saved as a draft. Review exercises and video matches before publishing.');
   }catch(error){button.disabled=false;alert(error.message||'Copy failed. Original week was not changed.');}
 }
-async function copyProgrammeWeek(sourceWeekId){
-  const source=byId(state.programmeWeeks,sourceWeekId);if(!source)return;
-  const sourceReady=weekReadiness(source.programme_id,source.week_number);
-  if(sourceReady.level==='missing'||sourceReady.level==='incomplete'){
-    alert('Finish this source week before copying it:\n\n'+sourceReady.issues.join('\n'));return;
-  }
-  const proposed=Number(source.week_number||0)+1;
-  const raw=prompt(`Copy Week ${source.week_number} to which week?`,String(proposed));
-  if(raw===null)return;
-  const target=Number(raw);
-  if(!Number.isInteger(target)||target<1){alert('Enter a valid week number.');return;}
-  if(!confirm(`Copy Week ${source.week_number} into Week ${target}? The copied week will stay Draft / hidden.`))return;
-  try{
-    const {error}=await sb.rpc('admin_copy_programme_week',{p_source_week_id:sourceWeekId,p_target_week_number:target});
-    if(error)throw error;
-    await load();
-    const created=programmeWeekByNumber(source.programme_id,target);
-    if(created)state.selectedWeekId=created.id;
-    render();
-    alert(`Week ${target} created as a draft.`);
-  }catch(error){alert(error.message||'Unable to copy this programme week.');}
-}
 function publishTargetForCurrentContext(week){
   const d=contextDetails();
   if(!d||!week)return null;
