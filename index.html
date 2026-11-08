@@ -72,14 +72,17 @@ const state={
   selectedWeekId:null,
   athleteWorkspaceTab:'programme',
   workspaceTab:'programme',
-  loadErrors:[]
+  loadErrors:[],
+  athleteView:'all',
+  feedbackFocus:null
 };
 
-const pages=['dashboard','athletes','cohorts','programmes','feedback','system'];
+const pages=['dashboard','athletes','cohorts','cohort-programmes','programmes','feedback','system'];
 const labels={
   dashboard:'Overview',
   athletes:'Athletes',
   cohorts:'Schools',
+  'cohort-programmes':'Programme Groups',
   programmes:'Programme Builder',
   feedback:'Feedback',
   system:'System'
@@ -94,7 +97,9 @@ const programmeName=id=>byId(state.programmes,id)?.name||'Not assigned';
 const activeAccount=a=>a?.access_status==='active';
 const isPrivateAthlete=a=>!!a?.athlete_user_id;
 const isParentManaged=a=>!!a?.parent_user_id;
-const athleteKind=a=>isParentManaged(a)?'Parent-managed':isPrivateAthlete(a)?'Private Athlete':'School / legacy profile';
+const isSchoolCohort=c=>!!c?.organization_id;
+const isSchoolAthlete=a=>isSchoolCohort(cohortFor(a?.cohort_id))&&!a?.programme_id;
+const athleteKind=a=>isSchoolAthlete(a)?'School Athlete':isParentManaged(a)?'Parent-managed':isPrivateAthlete(a)?'Private Athlete':'Unclassified / legacy';
 const feedbackNeedsReview=f=>!f.reviewed_at;
 const directProgrammeAthlete=a=>!!a?.programme_id;
 const athleteCurrentWeek=a=>{
@@ -319,7 +324,7 @@ function render(){
   nav();
   const m=document.getElementById('main');
   if(state.page==='dashboard'){
-    const activeCohorts=state.cohorts.filter(x=>x.status==='live').length;
+    const activeCohorts=state.cohorts.filter(x=>x.status==='live'&&isSchoolCohort(x)).length;
     const activeAthletes=state.athletes.filter(a=>activeAccount(a)).length;
     const activeProgrammes=new Set([
       ...state.athletes.filter(a=>activeAccount(a)).map(athleteProgrammeId).filter(Boolean),
@@ -328,7 +333,7 @@ function render(){
     const attention=operationalAttention();
     const running=[
       ...state.athletes.filter(a=>activeAccount(a)&&athleteProgrammeId(a)).map(a=>({name:a.full_name||a.display_name||'Athlete',type:'Athlete',week:athleteCurrentWeek(a),pid:athleteProgrammeId(a),id:a.id})),
-      ...state.cohorts.filter(c=>c.status==='live'&&c.programme_id).map(c=>({name:c.name,type:'School',week:c.current_week||1,pid:c.programme_id,id:c.id}))
+      ...state.cohorts.filter(c=>c.status==='live'&&isSchoolCohort(c)&&c.programme_id).map(c=>({name:c.name,type:'School',week:c.current_week||1,pid:c.programme_id,id:c.id}))
     ];
     const healthy=running.filter(x=>['ready','live'].includes(weekReadiness(x.pid,x.week+1).level)).length;
     const urgent=attention.filter(x=>x.priority<=1), review=attention.filter(x=>x.priority===2), feedback=attention.filter(x=>x.priority===3);
@@ -337,7 +342,7 @@ function render(){
       return `<div class="v3-attention"><div><strong>${esc(x.title)}</strong><span>${esc(x.detail)}</span></div><button class="btn ghost" ${action}>Open</button></div>`;
     }).join('')}</div>`:'';
     m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Operations</div><h1>Control Room</h1><p class="muted">Know what needs Coach Du, what is ready, and what is safely running.</p></div><div class="v3-actions"><button class="btn primary" data-page="athletes">Open Athletes</button><button class="btn ghost" data-page="cohorts">Open Schools</button></div></div>
-    <div class="grid">${metric(activeAthletes,'Active Athletes')}${metric(activeCohorts,'Active Schools / Cohorts')}${metric(attention.length,'Items Needing Review')}${metric(healthy,'Next Weeks Ready')}</div>
+    <div class="grid"><button class="card metric metric-action" data-roster-filter="active"><strong>${activeAthletes}</strong><span>Active Athletes</span><small>View roster →</small></button><button class="card metric metric-action" data-page="cohorts"><strong>${activeCohorts}</strong><span>Active Schools</span><small>View schools →</small></button><button class="card metric metric-action" data-page="feedback"><strong>${state.feedback.filter(feedbackNeedsReview).length}</strong><span>Feedback to Review</span><small>Open inbox →</small></button><div class="card metric"><strong>${healthy}</strong><span>Next Weeks Ready</span></div></div>
     <section class="v3-section"><div class="toolbar"><div><div class="kicker">Nothing Hidden</div><h2>Needs Your Attention</h2><p class="muted">${attention.length?`${attention.length} item${attention.length===1?'':'s'} shown — nothing is silently cut off.`:'No operational action required.'}</p></div></div>
       ${renderAttentionGroup('Action Now',urgent)}${renderAttentionGroup('Coming To An End',review)}${renderAttentionGroup('Feedback Inbox',feedback)}
       ${!attention.length?'<div class="card"><p class="muted">Nothing requires action right now.</p></div>':''}
@@ -348,6 +353,7 @@ function render(){
   if(state.page==='athletes')return renderAthletes(m);
   if(state.page==='professionals')return renderProfessionals(m);
   if(state.page==='cohorts')return renderCohorts(m);
+  if(state.page==='cohort-programmes')return renderProgrammeGroups(m);
   if(state.page==='library')return renderLibrary(m);
   if(state.page==='feedback')return renderFeedback(m);
   if(state.page==='access')return renderAccess(m);
