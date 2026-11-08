@@ -217,7 +217,7 @@ const seriousFeedback=f=>{
 const accessCodeExpired=c=>!!(c.expires_at&&new Date(c.expires_at).getTime()<Date.now());
 const operationalAttention=()=>{
   const items=[];
-  state.athletes.forEach(a=>{
+  state.athletes.filter(a=>a.access_status!=='archived').forEach(a=>{
     const pid=athleteProgrammeId(a),cw=athleteCurrentWeek(a),name=a.full_name||a.display_name||'Athlete';
     const hasAccount=!!(a.parent_user_id||a.athlete_user_id);
     if(hasAccount&&a.access_status!=='active'){
@@ -330,7 +330,7 @@ function globalSearchRows(query){
   const q=String(query||'').trim().toLowerCase();
   if(q.length<2)return [];
   const rows=[];
-  state.athletes.forEach(a=>{
+  state.athletes.filter(a=>a.access_status!=='archived').forEach(a=>{
     const name=a.full_name||a.display_name||'Athlete';
     const hay=[name,athleteProgrammeName(a),cohortName(a.cohort_id),athleteKind(a)].join(' ').toLowerCase();
     if(hay.includes(q))rows.push({type:'athlete',id:a.id,title:name,meta:`Athlete · ${athleteProgrammeName(a)} · Week ${athleteCurrentWeek(a)}`});
