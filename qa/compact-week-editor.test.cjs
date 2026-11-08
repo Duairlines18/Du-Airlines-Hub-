@@ -23,12 +23,11 @@ test('prescription / day / block actions and videos remain accessible',()=>{
  assert.ok(html.includes('prettyPrescription(p)'));
  assert.ok(html.includes('Video attached ✓'));
 });
-test('copy remains within source programme, with no new cross-athlete copy claim or overwrite',()=>{
- assert.ok(html.includes('title="Duplicate within this programme only"'));
- assert.ok(!html.includes('>Duplicate to another week</button>'));
- assert.ok(html.includes("sb.rpc('admin_copy_programme_week'"));
- assert.ok(html.includes('The copied week will stay Draft / hidden'));
- assert.ok(html.includes('data-publish-week='));
+test('old native prompt copy removed while safe cross-programme copy remains',()=>{
+ assert.ok(!html.includes('data-copy-week='));
+ assert.ok(!html.includes('async function copyProgrammeWeek('));
+ assert.ok(html.includes('data-cross-copy-week='));
+ assert.ok(html.includes('Plan & Publish Week'));
 });
 test('action toolbar is before expanding week content, not hidden at bottom',()=>{
  const start=html.indexOf('const programmeHtml=week?');
