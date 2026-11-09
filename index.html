@@ -893,7 +893,7 @@ function quickWriteForm(day){
   openModal(`<h2>Paste / Write Workout</h2>
     <p class="muted">${esc(day.day_key||'')} — ${esc(day.title||'Training Day')}</p>
     ${published?'<div class="notice v3-status-bad"><strong>This week is currently published.</strong> Quick Write replacement is disabled for published weeks. Edit an existing block through secure publishing or prepare changes in a draft week.</div>':''}
-    ${existing?`<div class="notice">This day currently has ${existing} workout block${existing===1?'':'s'}. Saving Quick Write will snapshot the current day, then replace those blocks atomically.</div>`:''}
+    ${existing?`<div class="notice v3-status-bad"><strong>Existing training: ${existing} block${existing===1?'':'s'}.</strong> Saving this paste will replace this entire day's workout, not add to it. A recovery snapshot is kept.</div><label class="paste-replace-confirm"><input type="checkbox" id="qwAllowReplace"> I agree to replace this day's current workout.</label>`:''}
     <label class="wide">Paste from ChatGPT or type your workout
       <textarea id="qwText" rows="14" placeholder="Warm Up&#10;A March 2x20m&#10;Pogos 2x20&#10;&#10;Acceleration&#10;Falling Start 4x10m&#10;3 Point Start 3x20m, 90 sec rest&#10;&#10;Strength&#10;Split Squat 3x8 each&#10;Calf Raise 3x12"></textarea>
     </label>
