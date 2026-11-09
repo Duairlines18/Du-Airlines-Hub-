@@ -40,3 +40,16 @@ test('advanced CRM content is expandable and same screen, not deleted',()=>{
  assert.ok(html.includes('data-workspace-tab="feedback"'));
  assert.ok(html.includes('data-workspace-tab="athletes"'));
 });
+
+test('paste from ChatGPT uses an explicit day choice and safe exercise matching',()=>{
+ for(const fragment of ['function openPasteWorkoutForWeek(weekId)','data-paste-week-workout=','data-paste-day=','Paste from ChatGPT or type your workout','Review Exercises & Videos','qwAllowReplace','holder.dataset.rawText=raw','Workout text changed. Review exercises and videos again'])
+  assert.ok(html.includes(fragment),fragment);
+ assert.ok(html.includes("if(existing&&!document.getElementById('qwAllowReplace')?.checked)"));
+ assert.ok(html.includes("if(liveWeekForTrainingDay(qwDay))"));
+ assert.ok(html.includes("sb.rpc('admin_replace_training_day_blocks'"));
+ assert.ok(html.includes("if(unresolved.length){alert('Match every exercise before saving.')"));
+});
+test('copied Markdown formatting is normalized before exercise matching',()=>{
+ for(const fragment of ["replace(/^#{1,6}\\s+/,'')","replace(/^[-*•]\\s+/,'')","replace(/^\\d+[.)]\\s+/,'')","replace(/\\*\\*/g,'')"])
+  assert.ok(html.includes(fragment),fragment);
+});
