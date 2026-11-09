@@ -144,6 +144,27 @@ window.DU_AIRLINES_ENV = {
 .copy-destination-option{text-align:left;white-space:normal;justify-content:flex-start;padding:10px;overflow-wrap:anywhere}
 .copy-destination-option[aria-pressed="true"]{border-color:var(--gold);background:var(--lift)}
 #copyDestinationSearch{width:100%}
+/* Coaching-first single workspace, responsive: publishing stays individually gated */
+.weekly-writing-home{margin:12px 0 16px;display:grid;gap:12px}
+.weekly-writing-home h2{margin:4px 0;font-size:22px}
+.weekly-write-main{width:100%;min-height:48px;font-weight:750}
+.weekly-write-secondary{flex-wrap:wrap}.weekly-write-secondary .btn{flex:1;min-width:160px}
+.weekly-delivery-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.weekly-delivery-summary>div{display:flex;flex-direction:column;gap:2px;padding:10px;border:1px solid var(--hair);border-radius:9px}
+.weekly-delivery-summary strong{font-size:22px;color:var(--gold2)}
+.weekly-delivery-summary span{font-size:12px;color:var(--sage)}
+.weekly-delivery-rows{border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.weekly-delivery-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;gap:12px;border-bottom:1px solid var(--hair)}
+.weekly-delivery-row:last-child{border-bottom:0}
+.weekly-delivery-row>span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.weekly-delivery-row small{color:var(--sage);overflow-wrap:anywhere}
+.weekly-advanced{padding:10px 12px;margin-bottom:14px;border:1px solid var(--hair);border-radius:11px}
+.weekly-advanced>summary{cursor:pointer;color:var(--gold2);font-size:13px;font-weight:650}
+.weekly-advanced .context-grid{margin-top:12px}
+@media(max-width:520px){.weekly-write-secondary .btn{min-width:0;flex-basis:100%}.weekly-writing-home h2{font-size:20px}.weekly-delivery-row .btn{min-height:38px}}
+.paste-day-picker{display:grid;gap:8px;margin:12px 0}.paste-day-picker .btn{text-align:left;white-space:normal;min-height:44px}
+.paste-replace-confirm{display:flex!important;align-items:flex-start;gap:10px;font-weight:600;color:var(--gold2)}.paste-replace-confirm input{width:20px;height:20px;flex-shrink:0}
+.qw-format-help summary{cursor:pointer;color:var(--gold2);font-size:13px;margin:8px 0}
 </style></head><body>
 <section id="login" class="login"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Private Control Room</h1><p class="muted">Secure founder access. This page is never linked from the public website.</p><form id="loginForm"><label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required><p id="loginErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Log in</button><div class="login-links"><button type="button" class="linkbtn" id="forgotPassword">Forgot password?</button></div></form><div id="setupNotice" class="notice hidden">Supabase is not configured yet. Add your project values to <span class="code">config.js</span>.</div></div></section>
 <section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
@@ -834,7 +855,14 @@ function qwLooksLikeHeading(line){
   return /:$/.test(clean)&&clean.length<60;
 }
 function qwParseText(raw){
-  const lines=String(raw||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  // Support common ChatGPT Markdown formatting without treating bullets as exercise names.
+  const lines=String(raw||'').split(/\r?\n/).map(x=>x.trim()
+    .replace(/^#{1,6}\s+/,'')
+    .replace(/^[-*•]\s+/,'')
+    .replace(/^\d+[.)]\s+/,'')
+    .replace(/\*\*/g,'')
+    .replace(/`/g,'')
+    .trim()).filter(Boolean);
   const blocks=[];
   let current=null;
   for(const line of lines){
@@ -855,18 +883,28 @@ function qwParseText(raw){
   }
   return blocks.filter(b=>b.items.length);
 }
+function openPasteWorkoutForWeek(weekId){
+  const week=byId(state.programmeWeeks,weekId),ctx=contextDetails();
+  if(!week||!ctx||week.programme_id!==ctx.programmeId)return;
+  if(isPublishedWeek(week)){alert('This week is published. Create or open a draft week before pasting workouts.');return;}
+  const days=daysForWeek(week.id).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0));
+  if(!days.length){alert('Create a training day first, then paste its workout.');addTrainingDayForm(week);return;}
+  openModal(`<h2>Paste a workout</h2><p class="muted">Week ${week.week_number}. Choose the day for your ChatGPT workout.</p>`+
+    `<div class="paste-day-picker">${days.map(day=>`<button type="button" class="btn ghost" data-paste-day="${day.id}">${esc(day.day_key||'Day')} · ${esc(day.title||'Training')}${blocksForDay(day.id).length?' · Already has training':''}</button>`).join('')}</div>`+
+    '<button type="button" class="btn ghost" data-close-modal>Cancel</button>');
+}
 function quickWriteForm(day){
   const week=byId(state.programmeWeeks,day.programme_week_id);
   const published=week?isPublishedWeek(week):false;
   const existing=blocksForDay(day.id).length;
-  openModal(`<h2>Quick Write Workout</h2>
+  openModal(`<h2>Paste / Write Workout</h2>
     <p class="muted">${esc(day.day_key||'')} — ${esc(day.title||'Training Day')}</p>
     ${published?'<div class="notice v3-status-bad"><strong>This week is currently published.</strong> Quick Write replacement is disabled for published weeks. Edit an existing block through secure publishing or prepare changes in a draft week.</div>':''}
-    ${existing?`<div class="notice">This day currently has ${existing} workout block${existing===1?'':'s'}. Saving Quick Write will snapshot the current day, then replace those blocks atomically.</div>`:''}
-    <label class="wide">Type the workout naturally
+    ${existing?`<div class="notice v3-status-bad"><strong>Existing training: ${existing} block${existing===1?'':'s'}.</strong> Saving this paste will replace this entire day's workout, not add to it. A recovery snapshot is kept.</div><label class="paste-replace-confirm"><input type="checkbox" id="qwAllowReplace"> I agree to replace this day's current workout.</label>`:''}
+    <label class="wide">Paste from ChatGPT or type your workout
       <textarea id="qwText" rows="14" placeholder="Warm Up&#10;A March 2x20m&#10;Pogos 2x20&#10;&#10;Acceleration&#10;Falling Start 4x10m&#10;3 Point Start 3x20m, 90 sec rest&#10;&#10;Strength&#10;Split Squat 3x8 each&#10;Calf Raise 3x12"></textarea>
     </label>
-    <div class="qw-example">Warm Up
+    <details class="qw-format-help"><summary>Example format (optional)</summary><div class="qw-example">Warm Up
 A March 2x20m
 Pogos 2x20
 Hip Lock Hold 2x20 sec each
@@ -877,12 +915,12 @@ Falling Start 4x10m
 
 Strength
 Split Squat 3x8 each
-Calf Raise 3x12</div>
+Calf Raise 3x12</div></details>
     <input type="hidden" id="qwDayId" value="${day.id}">
     <div id="qwPreview"></div>
     <div class="row" style="margin-top:18px">
       <button value="cancel" class="btn ghost">Cancel</button>
-      <button type="button" class="btn primary" id="previewQuickWrite">Preview Workout</button>
+      <button type="button" class="btn primary" id="previewQuickWrite">Review Exercises & Videos</button>
       <button type="button" class="btn primary" id="saveQuickWrite" hidden>Save Workout</button>
     </div>`);
 }
@@ -908,6 +946,7 @@ function renderQuickWritePreview(){
   }).join('')}</div>`).join('');
   holder.innerHTML=`<div class="notice ${unresolved?'v3-status-bad':'v3-status-ready'}"><strong>${unresolved?unresolved+' exercise'+(unresolved===1?'':'s')+' need matching':'All exercises matched ✓'}</strong>${unresolved?' — choose the correct library exercise before saving.':' Videos will attach automatically from the exercise library.'}</div><div class="qw-preview">${html}</div>`;
   document.getElementById('saveQuickWrite').hidden=unresolved>0;
+  holder.dataset.rawText=raw;
   holder.dataset.blocks=JSON.stringify(blocks.map(b=>({title:b.title,block_type:b.block_type,focus:b.focus,items:b.items.map(i=>({source:i.source,selectedCode:i.selectedCode,prescription:i.prescription}))})));
 }
 function quickWriteSelectionChanged(select){
@@ -928,6 +967,10 @@ function quickWriteSelectionChanged(select){
 }
 async function saveQuickWrite(){
   const dayId=document.getElementById('qwDayId')?.value,holder=document.getElementById('qwPreview');if(!dayId||!holder)return;
+  if((document.getElementById('qwText')?.value||'')!==holder.dataset.rawText){alert('Workout text changed. Review exercises and videos again before saving.');return;}
+  const existing=blocksForDay(dayId).length;
+  if(existing&&!document.getElementById('qwAllowReplace')?.checked){alert('This day already has training. Confirm replacement explicitly before saving.');return;}
+
   let parsed=[];try{parsed=JSON.parse(holder.dataset.blocks||'[]')}catch(e){alert('Preview the workout again before saving.');return;}
   const unresolved=parsed.flatMap(b=>b.items||[]).filter(i=>!i.selectedCode);
   if(unresolved.length){alert('Match every exercise before saving.');return;}
@@ -944,7 +987,7 @@ async function saveQuickWrite(){
   if(typeof workoutDeliveryIssues!=='function'){alert('Workout validation unavailable. Reload before saving.');return;}
   const quickWriteIssues=workoutDeliveryIssues(blocks,state.exercises);
   if(quickWriteIssues.length){alert('Quick Write needs review before saving:\\n\\n'+quickWriteIssues.join('\\n'));return;}
-  if(!confirm(`Replace this training day with ${blocks.length} Quick Write block${blocks.length===1?'':'s'}?`))return;
+  if(!confirm(`${existing?'REPLACE '+existing+' existing workout blocks':'Save new training'} with ${blocks.length} reviewed block${blocks.length===1?'':'s'}? This does not publish the week.`))return;
   const button=document.getElementById('saveQuickWrite');button.disabled=true;const original=button.textContent;button.textContent='Saving…';
   try{
     const {data,error}=await sb.rpc('admin_replace_training_day_blocks',{p_training_day_id:dayId,p_blocks:blocks});
@@ -1277,6 +1320,58 @@ function publishTargetForCurrentContext(week){
     return {type:'athlete',id:d.account.id,label:d.label,current:athleteCurrentWeek(d.account)};
   return null;
 }
+function weeklyDeliveryOverview(programmeId,currentWeek){
+  const weeks=programmeWeeksFor(programmeId);
+  const current=Number(currentWeek||1),next=current+1;
+  const future=weeks.filter(w=>Number(w.week_number)>=current).sort((a,b)=>Number(a.week_number)-Number(b.week_number));
+  const published=future.filter(isPublishedWeek).length;
+  const drafts=future.filter(w=>!isPublishedWeek(w)).length;
+  const nextReadiness=weekReadiness(programmeId,next);
+  const nextLabel=nextReadiness.level==='live'?'Published':nextReadiness.level==='ready'?'Ready to review':nextReadiness.level==='incomplete'?'Needs editing':'Not started';
+  return {current,next,published,drafts,nextReadiness,nextLabel,rows:Array.from({length:4},(_,i)=>{
+    const n=current+i,w=programmeWeekByNumber(programmeId,n),r=weekReadiness(programmeId,n);
+    return {n,w,r,label:!w?'Not started':isPublishedWeek(w)?'Published':r.level==='ready'?'Draft ready':'Draft — needs work'};
+  })};
+}
+function selectProgrammeWeek(weekId){
+  const target=byId(state.programmeWeeks,weekId),context=contextDetails();
+  if(!target||!context||target.programme_id!==context.programmeId)return;
+  state.selectedWeekId=target.id;state.workspaceTab='programme';render();
+}
+async function writeNextWeek(){
+  const context=contextDetails();
+  if(!context)return;
+  const next=Number(context.currentWeek||1)+1,existing=programmeWeekByNumber(context.programmeId,next);
+  if(existing){
+    selectProgrammeWeek(existing.id);
+    if(isPublishedWeek(existing))alert('Week '+next+' is already published. Choose another draft week to edit.');
+    return;
+  }
+  if(next>52){alert('The maximum supported week is 52. Review the new training block first.');return;}
+  const button=document.querySelector('[data-write-next-week]');
+  if(button)button.disabled=true;
+  try{
+    const {data,error}=await sb.rpc('admin_prepare_future_week_drafts',{
+      p_programme_id:context.programmeId,p_after_week:next-1,p_count:1
+    });
+    if(error)throw error;
+    if(!data?.ok||data.status!=='draft'||data.published!==false)throw new Error('The draft could not be confirmed.');
+    await load();
+    const created=programmeWeekByNumber(context.programmeId,next);
+    if(!created)throw new Error('Week was prepared but is not visible. Refresh the programme.');
+    state.selectedWeekId=created.id;state.workspaceTab='programme';render();
+  }catch(error){alert(error.message||'Could not prepare next week. Existing training is unchanged.');if(button)button.disabled=false;}
+}
+function selectedWeekAction(weekId){
+  const week=byId(state.programmeWeeks,weekId);
+  const context=contextDetails();
+  if(!week||!context||week.programme_id!==context.programmeId)return;
+  state.selectedWeekId=week.id;
+  state.workspaceTab='programme';
+  render();
+  openWeekPlanning(week.id);
+}
+
 function openWeekPlanning(weekId){
   const week=byId(state.programmeWeeks,weekId);
   const target=publishTargetForCurrentContext(week);
@@ -1408,8 +1503,16 @@ async function loadCrmBrief(type,id){
   if(!sb||!['athlete','school'].includes(type)||!id)return;
   const key=type+':'+id;
   if(state.crmBriefs[key]?.loading)return;
+  // Keep expanded CRM visible while its async request re-renders this workspace.
+  const expanded=document.querySelector('details.weekly-advanced')?.open===true;
+  const refreshVisible=()=>{
+    if(['athlete-workspace','programme-editor'].includes(state.page)){
+      render();
+      if(expanded){const panel=document.querySelector('details.weekly-advanced');if(panel)panel.open=true;}
+    }
+  };
   state.crmBriefs[key]={...state.crmBriefs[key],loading:true,error:''};
-  render();
+  refreshVisible();
   try{
     const {data,error}=await sb.functions.invoke('control-room-crm',{body:{type,id}});
     if(error)throw error;
@@ -1418,7 +1521,7 @@ async function loadCrmBrief(type,id){
   }catch{
     state.crmBriefs[key]={loading:false,error:'CRM could not be loaded. Check its secure server connection or try again.',data:null};
   }
-  if(['athlete-workspace','programme-editor'].includes(state.page))render();
+  refreshVisible();
 }
 
 function renderProgrammeEditor(m){
@@ -1434,8 +1537,9 @@ function renderProgrammeEditor(m){
   const weekFeedback=allFeedback.filter(f=>Number(f.week_number)===Number(selectedWeekNumber)),latestFeedback=weekFeedback[0];
   const duration=Math.max(Number(programme?.duration_weeks||0),...weeks.map(w=>Number(w.week_number||0)),Number(currentWeek||1));
   const readiness=week?weekReadiness(programmeId,selectedWeekNumber):{level:'missing',label:'Not built',issues:[]};
+  const delivery=weeklyDeliveryOverview(programmeId,currentWeek);
   const weekStrip=Array.from({length:duration},(_,i)=>i+1).map(n=>{const w=weeks.find(x=>Number(x.week_number)===n),r=weekReadiness(programmeId,n),status=w&&Number(n)===Number(currentWeek)&&isPublishedWeek(w)?'Live':r.label;return `<button class="v3-week-btn ${w?.id===week?.id?'active':''}" ${w?`data-select-week="${w.id}"`:'disabled'}><strong>Week ${n}</strong><small>${esc(status)}${w?.phase?' · '+esc(w.phase):''}</small></button>`}).join('');
-  const wholeWeek=days.map(day=>`<details class="v3-day v3-day-collapse" data-programme-day="${day.id}"><summary class="v3-day-summary"><div><div class="kicker">${esc(day.day_key||'Training Day')}</div><h2>${esc(day.title||day.day_key||'Training Day')}</h2><p class="muted">${esc(day.objective||'')}${day.intensity?' · '+esc(day.intensity):''}${day.duration?' · '+esc(day.duration):''}</p><span class="muted mini">${blocksForDay(day.id).length} workout blocks · tap to expand</span></div><span class="v3-expand-cue">Details</span></summary><div class="v3-day-expanded"><div class="row v3-day-actions"><button class="btn primary" data-quick-write="${day.id}">Quick Write</button><button class="btn ghost" data-preview-day="${day.id}">Preview</button><button class="btn ghost" data-edit-day="${day.id}">Edit Day</button><button class="btn ghost" data-add-block="${day.id}">+ Block</button></div>${blocksForDay(day.id).map(block=>{const c=block.content||{},pres=Array.isArray(c.prescriptions)?c.prescriptions:[],items=Array.isArray(c.items)?c.items:[];return `<details class="v3-block v3-block-collapse"><summary class="v3-block-summary"><div><strong>${esc(block.title||block.block_type||'Workout Block')}</strong>${c.focus?`<div class="muted mini">${esc(c.focus)}</div>`:''}</div><span class="muted mini">${pres.length+items.length} entries · expand</span></summary><div class="v3-block-body"><div class="row v3-block-actions"><button class="btn ghost" data-add-exercise="${block.id}">+ Exercise</button><button class="btn ghost" data-edit-block="${block.id}">Edit Block</button></div>${pres.length?pres.map((p,i)=>`<div class="v3-prescription"><div class="row" style="justify-content:space-between"><div style="min-width:0;flex:1">${prettyPrescription(p)}</div><button class="btn ghost" data-remove-prescription="${block.id}" data-prescription-index="${i}">Remove</button></div></div>`).join(''):items.map(x=>`<div class="v3-prescription">${esc(x)}</div>`).join('')||'<p class="muted mini">No exercises yet.</p>'}</div></details>`}).join('')}</div></details>`).join('');
+  const wholeWeek=days.map(day=>`<details class="v3-day v3-day-collapse" data-programme-day="${day.id}"><summary class="v3-day-summary"><div><div class="kicker">${esc(day.day_key||'Training Day')}</div><h2>${esc(day.title||day.day_key||'Training Day')}</h2><p class="muted">${esc(day.objective||'')}${day.intensity?' · '+esc(day.intensity):''}${day.duration?' · '+esc(day.duration):''}</p><span class="muted mini">${blocksForDay(day.id).length} workout blocks · tap to expand</span></div><span class="v3-expand-cue">Details</span></summary><div class="v3-day-expanded"><div class="row v3-day-actions"><button class="btn primary" data-quick-write="${day.id}">Paste / Write Workout</button><button class="btn ghost" data-preview-day="${day.id}">Preview</button><button class="btn ghost" data-edit-day="${day.id}">Edit Day</button><button class="btn ghost" data-add-block="${day.id}">+ Block</button></div>${blocksForDay(day.id).map(block=>{const c=block.content||{},pres=Array.isArray(c.prescriptions)?c.prescriptions:[],items=Array.isArray(c.items)?c.items:[];return `<details class="v3-block v3-block-collapse"><summary class="v3-block-summary"><div><strong>${esc(block.title||block.block_type||'Workout Block')}</strong>${c.focus?`<div class="muted mini">${esc(c.focus)}</div>`:''}</div><span class="muted mini">${pres.length+items.length} entries · expand</span></summary><div class="v3-block-body"><div class="row v3-block-actions"><button class="btn ghost" data-add-exercise="${block.id}">+ Exercise</button><button class="btn ghost" data-edit-block="${block.id}">Edit Block</button></div>${pres.length?pres.map((p,i)=>`<div class="v3-prescription"><div class="row" style="justify-content:space-between"><div style="min-width:0;flex:1">${prettyPrescription(p)}</div><button class="btn ghost" data-remove-prescription="${block.id}" data-prescription-index="${i}">Remove</button></div></div>`).join(''):items.map(x=>`<div class="v3-prescription">${esc(x)}</div>`).join('')||'<p class="muted mini">No exercises yet.</p>'}</div></details>`}).join('')}</div></details>`).join('');
   const backPage=d.ctx.type==='cohort'?(isSchoolCohort(cohort)?'cohorts':'cohort-programmes'):'athletes',typeLabel=d.ctx.type==='cohort'?(isSchoolCohort(cohort)?'School':'Programme Group'):direct?'Individual Programme':'Athlete';
   const accessHtml=athleteId?`<div class="card"><h3>Account Access</h3><p class="muted">Status: ${esc(account?.access_status||'pending')} · ${esc(account?.access_reason||'')}</p><div class="row">${accessButtons('athlete',account)}</div></div>`:`<div class="card"><h3>${isSchoolCohort(cohort)?'School Access':'Group Access'}</h3><p class="muted">Athlete and staff codes attached to this cohort.</p>${state.accessCodes.filter(c=>c.cohort_id===cohort?.id).map(c=>`<div class="v3-attention"><div><strong>${esc(c.label||'Access code')}</strong><span>${esc(c.code_type==='staff'?'Staff':'Athlete')} · ${esc(c.status)} · Last used ${esc(c.last_used_at?fmtDate(c.last_used_at):'Never')}</span></div><div class="row">${c.status==='active'?`<button class="btn ghost" data-code-id="${c.id}" data-code-action="pause">Pause</button>`:''}${c.status==='paused'?`<button class="btn ghost" data-code-id="${c.id}" data-code-action="activate">Activate</button>`:''}</div></div>`).join('')||'<p class="muted">No shared access codes yet.</p>'}<div class="row" style="margin-top:12px"><button class="btn primary" data-code-type="cohort">New Athlete Code</button><button class="btn ghost" data-code-type="staff">New Staff Code</button></div></div>`;
   const schoolAthletes=cohort?.id&&isSchoolCohort(cohort)?state.athletes.filter(a=>a.cohort_id===cohort.id&&a.access_status!=='archived').sort((a,b)=>String(a.full_name||a.display_name||'').localeCompare(String(b.full_name||b.display_name||''))):[];
@@ -1445,12 +1549,29 @@ function renderProgrammeEditor(m){
   const hubAudienceCount=athleteId?state.athletes.filter(a=>athleteProgrammeId(a)===programmeId&&a.access_status==='active').length:membersInCohort(cohort?.id);
   const hubAudienceLabel=athleteId&&hubAudienceCount===1?`${label} only`:athleteId?`${hubAudienceCount} active athletes using this programme`:`${hubAudienceCount} athlete account${hubAudienceCount===1?'':'s'} in this cohort`;
   const hubHtml=week?`<div class="card"><h3>Coach Du Hub Message</h3><div class="notice"><strong>Visible to:</strong> ${esc(hubAudienceLabel)}</div><p class="muted">This uses the selected week’s existing athlete-education field. Check the audience above before saving.</p><textarea id="hubMessageText" rows="5" placeholder="Example: Own the positions this week. Quality before volume.">${esc(week.athlete_education||'')}</textarea><input type="hidden" id="hubMessageWeekId" value="${week.id}"><div class="row" style="margin-top:12px"><button class="btn primary" id="saveHubMessage">Save Hub Message</button></div></div>`:'<div class="card muted">Choose an existing week first.</div>';
-  const programmeHtml=week?`<section class="v3-section"><div class="toolbar"><div><div class="kicker">Week ${selectedWeekNumber}</div><h2>${esc(week.phase||'Programme Week')}</h2><p class="muted">${esc(week.weekly_objective||'No weekly objective yet.')} · Last changed ${esc(fmtDate(week.updated_at||week.published_at||week.created_at))}</p></div><div class="v3-health"><span class="pill">${isPublishedWeek(week)?'Published / visible':'Draft / hidden'}</span><span class="pill ${readiness.level==='incomplete'?'v3-status-bad':'v3-status-ready'}">${esc(readiness.label)}</span></div></div>${readiness.issues.length?`<div class="notice v3-status-bad"><strong>Not ready:</strong> ${esc(readiness.issues.join(' · '))}</div>`:''}${latestFeedback?`<div class="card" style="margin-bottom:14px"><div class="kicker">Latest Week Feedback</div><p>${feedbackSummary(latestFeedback)||'No response details.'}</p></div>`:''}<div class="v3-inline-actions v3-week-actions"><button class="btn primary" data-add-day="${week.id}">+ Training Day</button><button class="btn ghost" data-cross-copy-week="${week.id}" title="Copy a full training week into another eligible programme as a draft">Copy to Athlete / School</button><button class="btn primary" data-publish-week="${week.id}">${isPublishedWeek(week)?'View Published Week':'Plan & Publish Week'}</button></div><div class="v3-inline-actions v3-expand-actions"><button class="btn ghost" data-day-visibility="expand">Expand all days</button><button class="btn ghost" data-day-visibility="collapse">Collapse all days</button></div><p class="muted mini">Select a training day to see its blocks. Select a block to see prescriptions, rest, videos and editing controls.</p><div class="v3-list v3-condensed-week">${wholeWeek||'<div class="card muted">No training days built for this week.</div>'}</div></section>`:'<div class="card muted">No programme week selected.</div>';
+  const programmeHtml=week?`<section class="v3-section"><div class="toolbar"><div><div class="kicker">Week ${selectedWeekNumber}</div><h2>${esc(week.phase||'Programme Week')}</h2><p class="muted">${esc(week.weekly_objective||'No weekly objective yet.')} · Last changed ${esc(fmtDate(week.updated_at||week.published_at||week.created_at))}</p></div><div class="v3-health"><span class="pill">${isPublishedWeek(week)?'Published / visible':'Draft / hidden'}</span><span class="pill ${readiness.level==='incomplete'?'v3-status-bad':'v3-status-ready'}">${esc(readiness.label)}</span></div></div>${readiness.issues.length?`<div class="notice v3-status-bad"><strong>Not ready:</strong> ${esc(readiness.issues.join(' · '))}</div>`:''}${latestFeedback?`<div class="card" style="margin-bottom:14px"><div class="kicker">Latest Week Feedback</div><p>${feedbackSummary(latestFeedback)||'No response details.'}</p></div>`:''}<div class="v3-inline-actions v3-week-actions"><button class="btn primary" data-add-day="${week.id}">+ Training Day</button><button class="btn primary" data-publish-week="${week.id}">${isPublishedWeek(week)?'View Published Week':'Plan & Publish Week'}</button></div><div class="v3-inline-actions v3-expand-actions"><button class="btn ghost" data-day-visibility="expand">Expand all days</button><button class="btn ghost" data-day-visibility="collapse">Collapse all days</button></div><p class="muted mini">Select a training day to see its blocks. Select a block to see prescriptions, rest, videos and editing controls.</p><div class="v3-list v3-condensed-week">${wholeWeek||'<div class="card muted">No training days built for this week.</div>'}</div></section>`:'<div class="card muted">No programme week selected.</div>';
   const tab=state.workspaceTab||'programme';
   m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker" style="margin-top:16px">${esc(typeLabel)}</div><h1>${esc(label)}</h1><p class="muted">${esc(programme?.name||'Programme')} · Current Week ${currentWeek}</p></div><div class="v3-actions"><button class="btn primary" data-workspace-current>Current Week</button><button class="btn ghost" data-workspace-tab="feedback">Feedback (${allFeedback.filter(feedbackNeedsReview).length})</button>${athleteId?`<button class="btn ghost" data-substitutions="${athleteId}">Exercise Swaps</button>`:''}${athleteId?`<button class="btn ghost" data-edit-athlete="${athleteId}">Manage Athlete</button>`:''}${d.ctx.type==='cohort'&&cohort?.id?`<button class="btn ghost" data-edit-cohort="${cohort.id}">${isSchoolCohort(cohort)?'School Settings':'Group Settings'}</button>`:''}</div></div>
+  <section class="card weekly-writing-home" aria-label="Training programme command centre">
+    <div class="toolbar"><div><div class="kicker">Write & Deliver</div><h2>Your training week</h2>
+    <p class="muted">Current Week ${delivery.current} · Next Week ${delivery.next}: <strong>${esc(delivery.nextLabel)}</strong></p></div></div>
+    <button class="btn primary weekly-write-main" data-write-next-week>${delivery.nextReadiness.week?'Open Next Week':'Write Next Week'}</button>
+    <div class="row weekly-write-secondary"><button class="btn ghost" data-paste-week-workout="${week?.id||''}" ${week&&!isPublishedWeek(week)?'':'disabled'}>Paste Workout</button><button class="btn ghost" data-prepare-drafts="${programmeId}" data-after-week="${currentWeek}">Plan 1 / 2 / 4 Weeks</button>
+    <button class="btn ghost" data-cross-copy-week="${week?.id||''}" ${week?'':'disabled'}>Copy Training Foundation</button></div>
+    <div class="weekly-delivery-summary">
+      <div><strong>${delivery.published}</strong><span>Published weeks (current onward)</span></div>
+      <div><strong>${delivery.drafts}</strong><span>Saved drafts (current onward)</span></div>
+    </div>
+    <div class="weekly-delivery-rows">
+      ${delivery.rows.map(x=>`<div class="weekly-delivery-row"><span><strong>Week ${x.n}</strong><small>${esc(x.label)}${x.w?' · '+x.r.days+' days / '+x.r.blocks+' blocks':''}</small></span>
+        ${x.w?`<button class="btn ghost" data-focus-programme-week="${x.w.id}">${isPublishedWeek(x.w)?'View':x.r.level==='ready'?'Review':'Edit'}</button>`:'<span class="muted mini">Create draft above</span>'}</div>`).join('')}
+    </div>
+    <p class="muted mini">Publish a week only after checking its sessions and videos. Publishing releases every workout in that week to the assigned audience; saving drafts does not.</p>
+  </section>
+  <details class="weekly-advanced"><summary>CRM notes & advanced athlete information</summary>
   ${d.ctx.type==='athlete'?crmBriefMarkup('athlete',account?.id):d.ctx.type==='cohort'&&isSchoolCohort(cohort)?crmBriefMarkup('school',cohort?.id):''}
   <div class="context-grid"><div class="card"><span class="muted mini">Current</span><strong>Week ${currentWeek}</strong></div><div class="card"><span class="muted mini">Built</span><strong>${weeks.length} weeks</strong></div><div class="card"><span class="muted mini">Viewing</span><strong>Week ${selectedWeekNumber}</strong></div><div class="card"><span class="muted mini">Feedback</span><strong>${allFeedback.filter(feedbackNeedsReview).length} waiting</strong></div></div>
-  <section class="v3-section"><div class="kicker">Full Programme</div><h2>Previous, current and saved next weeks</h2><div class="v3-week-strip">${weekStrip}</div><div class="v3-inline-actions"><button class="btn ghost" data-prepare-drafts="${programmeId}" data-after-week="${currentWeek}">+ Prepare 1, 2 or 4 future draft weeks</button></div></section>
+  </details><section class="v3-section"><div class="kicker">Your saved weeks</div><h2>Previous, current and saved next weeks</h2><div class="v3-week-strip">${weekStrip}</div></section>
   <div class="v3-subnav" role="group" aria-label="Workspace sections"><button data-workspace-tab="programme" class="${tab==='programme'?'active':''}">Programme</button>${cohort?.id&&isSchoolCohort(cohort)?`<button data-workspace-tab="athletes" class="${tab==='athletes'?'active':''}">Athletes (${schoolAthletes.length})</button>`:''}<button data-workspace-tab="feedback" class="${tab==='feedback'?'active':''}">Feedback (${allFeedback.length})</button><button data-workspace-tab="hub" class="${tab==='hub'?'active':''}">Hub Content</button><button data-workspace-tab="access" class="${tab==='access'?'active':''}">Access</button></div>
   ${tab==='programme'?programmeHtml:tab==='athletes'&&cohort?.id&&isSchoolCohort(cohort)?schoolRosterHtml:tab==='feedback'?feedbackHtml:tab==='hub'?hubHtml:accessHtml}`;
 }
@@ -1870,6 +1991,14 @@ document.addEventListener('click',async e=>{
   if(goBack){navigateBack();return;}
   const closeModal=e.target.closest('[data-close-modal]');
   if(closeModal){document.getElementById('modal').close();return;}
+  const weekPaste=e.target.closest('[data-paste-week-workout]');
+  if(weekPaste){openPasteWorkoutForWeek(weekPaste.dataset.pasteWeekWorkout);return;}
+  const dayPaste=e.target.closest('[data-paste-day]');
+  if(dayPaste){const day=byId(state.trainingDays,dayPaste.dataset.pasteDay);if(day)quickWriteForm(day);return;}
+  const nextWriter=e.target.closest('[data-write-next-week]');
+  if(nextWriter){await writeNextWeek();return;}
+  const focusWeek=e.target.closest('[data-focus-programme-week]');
+  if(focusWeek){selectProgrammeWeek(focusWeek.dataset.focusProgrammeWeek);return;}
   const startDrafts=e.target.closest('[data-prepare-drafts]');
   if(startDrafts){openFutureDrafts(startDrafts.dataset.prepareDrafts,Number(startDrafts.dataset.afterWeek));return;}
   const confirmDrafts=e.target.closest('[data-confirm-future-drafts]');

@@ -10,9 +10,9 @@ test('workspace JS compiles; compact editor and top publishing preserved',()=>{
  const start=html.indexOf('const programmeHtml=week?');
  const end=html.indexOf("const tab=state.workspaceTab",start);
  const p=html.slice(start,end);
- for(const id of ['data-publish-week=','data-cross-copy-week=','data-add-day='])
+ for(const id of ['data-publish-week=','data-add-day='])
   assert.ok(p.includes(id));
- for(const id of ['data-publish-week=','data-cross-copy-week='])
+ for(const id of ['data-publish-week='])
   assert.ok(p.indexOf(id)<p.indexOf('${wholeWeek'));
  assert.ok(html.includes('details.v3-day-collapse'));
 });
