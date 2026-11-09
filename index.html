@@ -165,6 +165,21 @@ window.DU_AIRLINES_ENV = {
 .paste-day-picker{display:grid;gap:8px;margin:12px 0}.paste-day-picker .btn{text-align:left;white-space:normal;min-height:44px}
 .paste-replace-confirm{display:flex!important;align-items:flex-start;gap:10px;font-weight:600;color:var(--gold2)}.paste-replace-confirm input{width:20px;height:20px;flex-shrink:0}
 .qw-format-help summary{cursor:pointer;color:var(--gold2);font-size:13px;margin:8px 0}
+/* Founder-first compact cockpit. No changes to training or authorization. */
+.cockpit-hero{margin-bottom:8px}
+.cockpit-work-area{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.cockpit-work-area .v3-section{min-width:0;margin:0}
+.cockpit-work-area .v3-section h2{font-size:19px}
+.cockpit-scroll-list{max-height:475px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.cockpit-work-area .week-command-row{grid-template-columns:minmax(0,1fr) auto;gap:7px;padding:12px}
+.cockpit-work-area .week-command-weeks{grid-column:1/-1;grid-row:2}
+.cockpit-work-area .week-command-row>.btn{grid-column:2;grid-row:1}
+.cockpit-work-area .week-command-review{grid-column:1/-1;justify-content:flex-start}
+.cockpit-work-area .week-command-who small{font-size:12px}
+#qwText{display:block;width:100%;min-height:250px;font-size:16px;line-height:1.55;white-space:pre-wrap;border-radius:12px;padding:14px}
+.qw-preview{max-height:340px;overflow-y:auto;scrollbar-width:thin}
+@media(min-width:1080px){.cockpit-work-area{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}}
+@media(max-width:700px){.cockpit-scroll-list{max-height:390px}.cockpit-work-area{gap:12px}.cockpit-work-area .v3-section{padding:8px 0}#qwText{min-height:240px}}
 </style></head><body>
 <section id="login" class="login"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Private Control Room</h1><p class="muted">Secure founder access. This page is never linked from the public website.</p><form id="loginForm"><label>Email</label><input id="email" type="email" required><label>Password</label><input id="password" type="password" required><p id="loginErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Log in</button><div class="login-links"><button type="button" class="linkbtn" id="forgotPassword">Forgot password?</button></div></form><div id="setupNotice" class="notice hidden">Supabase is not configured yet. Add your project values to <span class="code">config.js</span>.</div></div></section>
 <section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
@@ -413,7 +428,7 @@ function overviewPlanRow(x){
   const status=(s)=>`<span class="week-command-status ${['missing','incomplete','unassigned'].includes(s.key)?'v3-status-bad':s.key==='published'?'v3-status-ready':''}">${esc(s.label)}</span>`;
   return `<div class="week-command-row"><div class="week-command-who"><strong>${esc(x.name)}</strong><small>${x.kind==='school'?'School':'Athlete'} · Week ${x.week}${x.next.issue?' · '+esc(x.next.issue):''}</small></div>
     <div class="week-command-weeks"><span><small>Current W${x.week}</small>${status(x.current)}</span><span><small>Next W${x.week+1}</small>${status(x.next)}</span></div>
-    <button class="btn ghost" ${x.kind==='school'?`data-open-cohort="${esc(x.id)}"`:`data-open-athlete="${esc(x.id)}"`}>Open</button></div>`;
+    <button class="btn ghost" ${x.kind==='school'?`data-open-cohort="${esc(x.id)}"`:`data-open-athlete="${esc(x.id)}"`}>Write / View</button></div>`;
 }
 function overviewFeedbackRow(g){
   const latest=g.items[0];
@@ -530,19 +545,19 @@ function render(){
     const pending=feedbackReviewGroups();
     const pendingFeedback=state.feedback.filter(feedbackNeedsReview).length;
     const priorityFeedback=state.feedback.filter(f=>feedbackNeedsReview(f)&&seriousFeedback(f)).length;
-    const shownPlans=state.overviewShowAll?weekly:weekly.filter(x=>x.next.key!=='published');
-    const shownFeedback=state.overviewAllFeedback?pending:pending.slice(0,5);
+    const shownPlans=state.overviewShowAll?weekly:needPlan.slice(0,4);
+    const shownFeedback=state.overviewAllFeedback?pending:pending.slice(0,3);
     const today=new Date().toLocaleDateString('en-US',{timeZone:'America/Chicago',weekday:'long',month:'short',day:'numeric',year:'numeric'});
-    m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">Weekly Command Board · ${esc(today)}</div><h1>Control Room</h1><p class="muted">One line per athlete or school. Plan next week, publish when verified, and clear feedback as you review it.</p></div></div>
+    m.innerHTML=`${loadWarning()}<div class="v3-hero cockpit-hero"><div><div class="kicker">DU AIRLINES · COACH COCKPIT · ${esc(today)}</div><h1>Your Coaching Week</h1><p class="muted">At a glance: who needs a workout, what is published, and whose feedback needs you.</p></div></div>
     <div class="grid week-command-metrics"><button class="card metric metric-action" data-roster-filter="active"><strong>${activeAthletes}</strong><span>Active Athletes</span></button><button class="card metric metric-action" data-page="cohorts"><strong>${activeCohorts}</strong><span>Active Schools</span></button><button class="card metric metric-action" data-running-jump><strong>${needPlan.length}</strong><span>Next Weeks Needing Work</span></button><button class="card metric metric-action" data-attention-jump><strong>${pendingFeedback}</strong><span>Feedback to Review</span></button></div>
-    <section class="v3-section" id="runningProgrammes"><div class="toolbar"><div><div class="kicker">Training Delivery</div><h2>Next Week's Plans</h2><p class="muted">${needPlan.length} of ${weekly.length} athlete/school programmes need next-week attention. Published means live and verified; a ready draft still needs publishing.</p></div></div>
-      <div class="row week-command-toolbar"><button class="btn ghost" data-overview-toggle-plans aria-pressed="${state.overviewShowAll}">${state.overviewShowAll?'Show needing work':'Show all '+weekly.length+' plans'}</button></div>
-      <div class="week-command-list">${shownPlans.map(overviewPlanRow).join('')||'<div class="card muted">All active athlete and school next weeks are published. ✓</div>'}</div>
+    <div class="cockpit-work-area"><section class="v3-section" id="runningProgrammes"><div class="toolbar"><div><div class="kicker">Training Delivery</div><h2>Next Week's Plans</h2><p class="muted">${needPlan.length} of ${weekly.length} athlete/school programmes need next-week attention. Published means live and verified; a ready draft still needs publishing.</p></div></div>
+      <div class="row week-command-toolbar"><button class="btn ghost" data-overview-toggle-plans aria-pressed="${state.overviewShowAll}">${state.overviewShowAll?'Show four priority plans':'Expand all '+weekly.length+' athletes & schools'}</button></div><p class="muted mini">Showing ${shownPlans.length} of ${weekly.length} active training plans. Open a person or school to write and publish.</p>
+      <div class="week-command-list cockpit-scroll-list">${shownPlans.map(overviewPlanRow).join('')||'<div class="card muted">All active athlete and school next weeks are published. ✓</div>'}</div>
     </section>
     <section class="v3-section" id="needsAttention"><div class="toolbar"><div><div class="kicker">Feedback Inbox</div><h2>Feedback to Review</h2><p class="muted">${pendingFeedback} submissions from ${pending.length} people · ${priorityFeedback} need priority attention. Review one submission at a time; the full history is one tap away.</p></div></div>
-      <div class="row week-command-toolbar"><button class="btn ghost" data-page="feedback">Open full inbox</button>${pending.length>5?`<button class="btn ghost" data-overview-toggle-feedback>${state.overviewAllFeedback?'Show first five':'Show all '+pending.length+' people'}</button>`:''}</div>
-      <div class="week-command-list">${shownFeedback.map(overviewFeedbackRow).join('')||'<div class="card muted">No feedback awaiting review. ✓</div>'}</div>
-    </section>`;
+      <div class="row week-command-toolbar"><button class="btn ghost" data-page="feedback">Open full inbox</button>${pending.length>3?`<button class="btn ghost" data-overview-toggle-feedback>${state.overviewAllFeedback?'Show three priority people':'Expand '+pending.length+' people'}</button>`:''}</div><p class="muted mini">Showing ${shownFeedback.length} of ${pending.length} people with pending feedback.</p>
+      <div class="week-command-list cockpit-scroll-list">${shownFeedback.map(overviewFeedbackRow).join('')||'<div class="card muted">No feedback awaiting review. ✓</div>'}</div>
+    </section></div>`;
     return;
   }
   if(state.page==='athletes')return renderAthletes(m);
@@ -889,7 +904,7 @@ function openPasteWorkoutForWeek(weekId){
   if(isPublishedWeek(week)){alert('This week is published. Create or open a draft week before pasting workouts.');return;}
   const days=daysForWeek(week.id).sort((a,b)=>Number(a.sort_order||0)-Number(b.sort_order||0));
   if(!days.length){alert('Create a training day first, then paste its workout.');addTrainingDayForm(week);return;}
-  openModal(`<h2>Paste a workout</h2><p class="muted">Week ${week.week_number}. Choose the day for your ChatGPT workout.</p>`+
+  openModal(`<h2>Choose a training day</h2><p class="muted">Week ${week.week_number}. Choose the day for your ChatGPT workout.</p>`+
     `<div class="paste-day-picker">${days.map(day=>`<button type="button" class="btn ghost" data-paste-day="${day.id}">${esc(day.day_key||'Day')} · ${esc(day.title||'Training')}${blocksForDay(day.id).length?' · Already has training':''}</button>`).join('')}</div>`+
     '<button type="button" class="btn ghost" data-close-modal>Cancel</button>');
 }
@@ -897,12 +912,12 @@ function quickWriteForm(day){
   const week=byId(state.programmeWeeks,day.programme_week_id);
   const published=week?isPublishedWeek(week):false;
   const existing=blocksForDay(day.id).length;
-  openModal(`<h2>Paste / Write Workout</h2>
+  openModal(`<h2>Workout Notepad</h2>
     <p class="muted">${esc(day.day_key||'')} — ${esc(day.title||'Training Day')}</p>
     ${published?'<div class="notice v3-status-bad"><strong>This week is currently published.</strong> Quick Write replacement is disabled for published weeks. Edit an existing block through secure publishing or prepare changes in a draft week.</div>':''}
     ${existing?`<div class="notice v3-status-bad"><strong>Existing training: ${existing} block${existing===1?'':'s'}.</strong> Saving this paste will replace this entire day's workout, not add to it. A recovery snapshot is kept.</div><label class="paste-replace-confirm"><input type="checkbox" id="qwAllowReplace"> I agree to replace this day's current workout.</label>`:''}
-    <label class="wide">Paste from ChatGPT or type your workout
-      <textarea id="qwText" rows="14" placeholder="Warm Up&#10;A March 2x20m&#10;Pogos 2x20&#10;&#10;Acceleration&#10;Falling Start 4x10m&#10;3 Point Start 3x20m, 90 sec rest&#10;&#10;Strength&#10;Split Squat 3x8 each&#10;Calf Raise 3x12"></textarea>
+    <label class="wide">Write naturally, or paste from ChatGPT
+      <textarea id="qwText" rows="12" spellcheck="true" autocomplete="off" placeholder="Warm Up&#10;A March 2x20m&#10;Pogos 2x20&#10;&#10;Acceleration&#10;Falling Start 4x10m&#10;3 Point Start 3x20m, 90 sec rest&#10;&#10;Strength&#10;Split Squat 3x8 each&#10;Calf Raise 3x12"></textarea>
     </label>
     <details class="qw-format-help"><summary>Example format (optional)</summary><div class="qw-example">Warm Up
 A March 2x20m
@@ -921,7 +936,7 @@ Calf Raise 3x12</div></details>
     <div class="row" style="margin-top:18px">
       <button value="cancel" class="btn ghost">Cancel</button>
       <button type="button" class="btn primary" id="previewQuickWrite">Review Exercises & Videos</button>
-      <button type="button" class="btn primary" id="saveQuickWrite" hidden>Save Workout</button>
+      <button type="button" class="btn primary" id="saveQuickWrite" hidden>Save Draft Workout</button>
     </div>`);
 }
 function renderQuickWritePreview(){
@@ -944,7 +959,7 @@ function renderQuickWritePreview(){
       <div><span class="pill">${esc(item.source)}</span></div>
     </div>`;
   }).join('')}</div>`).join('');
-  holder.innerHTML=`<div class="notice ${unresolved?'v3-status-bad':'v3-status-ready'}"><strong>${unresolved?unresolved+' exercise'+(unresolved===1?'':'s')+' need matching':'All exercises matched ✓'}</strong>${unresolved?' — choose the correct library exercise before saving.':' Videos will attach automatically from the exercise library.'}</div><div class="qw-preview">${html}</div>`;
+  holder.innerHTML=`<div class="notice ${unresolved?'v3-status-bad':'v3-status-ready'}"><strong>${unresolved?unresolved+' exercise'+(unresolved===1?'':'s')+' need matching':'All exercises matched ✓'}</strong>${unresolved?' — choose the correct library exercise before saving.':' Check the linked video for each exercise before publishing.'}</div><div class="qw-preview">${html}</div>`;
   document.getElementById('saveQuickWrite').hidden=unresolved>0;
   holder.dataset.rawText=raw;
   holder.dataset.blocks=JSON.stringify(blocks.map(b=>({title:b.title,block_type:b.block_type,focus:b.focus,items:b.items.map(i=>({source:i.source,selectedCode:i.selectedCode,prescription:i.prescription}))})));
@@ -958,7 +973,7 @@ function quickWriteSelectionChanged(select){
   holder.dataset.blocks=JSON.stringify(blocks);
   const unresolved=blocks.flatMap(b=>b.items).filter(i=>!i.selectedCode).length;
   const status=holder.querySelector('.notice');
-  if(status){status.className='notice '+(unresolved?'v3-status-bad':'v3-status-ready');status.innerHTML=`<strong>${unresolved?unresolved+' exercise'+(unresolved===1?'':'s')+' need matching':'All exercises matched ✓'}</strong>${unresolved?' — choose the correct library exercise before saving.':' Videos will attach automatically from the exercise library.'}`;}
+  if(status){status.className='notice '+(unresolved?'v3-status-bad':'v3-status-ready');status.innerHTML=`<strong>${unresolved?unresolved+' exercise'+(unresolved===1?'':'s')+' need matching':'All exercises matched ✓'}</strong>${unresolved?' — choose the correct library exercise before saving.':' Check the linked video for each exercise before publishing.'}`;}
   const name=row.querySelector('strong'),meta=row.querySelector('.muted.mini'),flag=row.querySelector('.qw-match-bad');
   if(ex&&name)name.textContent=ex.name;
   if(ex&&meta)meta.textContent=(item.prescription.dosage||'No dosage')+(item.prescription.rest?' · Rest '+item.prescription.rest:'')+(ex.video_id?' · Video ✓':'');
@@ -1556,7 +1571,7 @@ function renderProgrammeEditor(m){
     <div class="toolbar"><div><div class="kicker">Write & Deliver</div><h2>Your training week</h2>
     <p class="muted">Current Week ${delivery.current} · Next Week ${delivery.next}: <strong>${esc(delivery.nextLabel)}</strong></p></div></div>
     <button class="btn primary weekly-write-main" data-write-next-week>${delivery.nextReadiness.week?'Open Next Week':'Write Next Week'}</button>
-    <div class="row weekly-write-secondary"><button class="btn ghost" data-paste-week-workout="${week?.id||''}" ${week&&!isPublishedWeek(week)?'':'disabled'}>Paste Workout</button><button class="btn ghost" data-prepare-drafts="${programmeId}" data-after-week="${currentWeek}">Plan 1 / 2 / 4 Weeks</button>
+    <div class="row weekly-write-secondary"><button class="btn ghost" data-paste-week-workout="${week?.id||''}" ${week&&!isPublishedWeek(week)?'':'disabled'}>Write / Paste Session</button><button class="btn ghost" data-prepare-drafts="${programmeId}" data-after-week="${currentWeek}">Plan 1 / 2 / 4 Weeks</button>
     <button class="btn ghost" data-cross-copy-week="${week?.id||''}" ${week?'':'disabled'}>Copy Training Foundation</button></div>
     <div class="weekly-delivery-summary">
       <div><strong>${delivery.published}</strong><span>Published weeks (current onward)</span></div>
