@@ -119,11 +119,11 @@ function pageSource(){
    await page.getByRole('heading',{name:'Paste / Write Workout'}).waitFor();
    assert.equal(await page.locator('#qwAllowReplace').count(),1,'existing workout cannot be silently replaced');
    assert.equal(await page.locator('#qwAllowReplace').isChecked(),false,'replace consent unchecked by default');
-   await page.locator('#qwText').fill('### Warm Up\\n- A-March 2 x 20m');
+   await page.locator('#qwText').fill('### Warm Up\n- A-March 2 x 20m');
    await page.locator('#previewQuickWrite').click();
    assert.ok((await page.locator('#qwPreview').innerText()).includes('All exercises matched'));
    assert.equal(await page.locator('#saveQuickWrite').isVisible(),true,'matched exercise can be reviewed');
-   await page.locator('#qwText').fill('### Warm Up\\n- A-March 3 x 20m');
+   await page.locator('#qwText').fill('### Warm Up\n- A-March 3 x 20m');
    assert.ok((await page.locator('#qwPreview').getAttribute('data-raw-text')).includes('2 x 20m'),'text edits require re-review before save');
    await page.locator('#modal').evaluate(el=>el.close());
    await page.locator('[data-publish-week="week-private-4"]').click();
