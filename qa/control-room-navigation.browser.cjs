@@ -22,10 +22,12 @@ const fixtures={
     {id:'week-private-5',programme_id:'programme-private',week_number:5,status:'live',verification_status:'verified',published_at:'2026-11-01T00:00:00Z',phase:'Movement Foundation'}
   ],
   training_days:[
+    {id:'day-private-draft',programme_week_id:'week-private-4',day_key:'MONDAY',title:'Foundation Preparation',sort_order:1},
     {id:'day-private-mon',programme_week_id:'week-private-5',day_key:'MONDAY',title:'Acceleration Mechanics',sort_order:1,intensity:'Easy'},
     {id:'day-private-tue',programme_week_id:'week-private-5',day_key:'TUESDAY',title:'Strength Foundations',sort_order:2}
   ],
   session_blocks:[
+    {id:'block-private-draft',training_day_id:'day-private-draft',title:'Existing Foundation',sort_order:1,block_type:'strength',content:{items:['Split Squat — 2 x 6 each leg']}},
     {id:'block-private-warm',training_day_id:'day-private-mon',title:'Warm Up',sort_order:1,block_type:'activation',content:{prescriptions:[{exerciseCode:'a-march',dosage:'2 x 20 m',rest:'Walk back'}]}},
     {id:'block-private-strength',training_day_id:'day-private-tue',title:'Strength',sort_order:1,block_type:'strength',content:{items:['Split Squat — 2 x 6 each side']}}
   ],
@@ -111,6 +113,19 @@ function pageSource(){
    assert.equal(await page.locator('details.v3-block-collapse[open]').count(),2);
    assert.equal(await page.locator('[data-copy-week]').count(),0,'obsolete same-programme prompt is removed');
    await page.locator('[data-select-week="week-private-4"]').click();
+   await page.locator('[data-paste-week-workout="week-private-4"]').click();
+   await page.getByRole('heading',{name:'Paste a workout'}).waitFor();
+   await page.locator('[data-paste-day="day-private-draft"]').click();
+   await page.getByRole('heading',{name:'Paste / Write Workout'}).waitFor();
+   assert.equal(await page.locator('#qwAllowReplace').count(),1,'existing workout cannot be silently replaced');
+   assert.equal(await page.locator('#qwAllowReplace').isChecked(),false,'replace consent unchecked by default');
+   await page.locator('#qwText').fill('### Warm Up\\n- A-March 2 x 20m');
+   await page.locator('#previewQuickWrite').click();
+   assert.ok((await page.locator('#qwPreview').innerText()).includes('All exercises matched'));
+   assert.equal(await page.locator('#saveQuickWrite').isVisible(),true,'matched exercise can be reviewed');
+   await page.locator('#qwText').fill('### Warm Up\\n- A-March 3 x 20m');
+   assert.ok((await page.locator('#qwPreview').getAttribute('data-raw-text')).includes('2 x 20m'),'text edits require re-review before save');
+   await page.locator('#modal').evaluate(el=>el.close());
    await page.locator('[data-publish-week="week-private-4"]').click();
    await page.getByRole('heading',{name:'Week 4 · Plan & Publish'}).waitFor();
    assert.equal(await page.locator('[data-week-plan-field]').count(),5,'weekly objective and coaching focus fields');
