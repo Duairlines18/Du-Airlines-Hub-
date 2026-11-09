@@ -117,7 +117,7 @@ function pageSource(){
    assert.equal(await page.locator('[data-copy-week]').count(),0,'obsolete same-programme prompt is removed');
    await page.locator('[data-select-week="week-private-4"]').click();
    await page.locator('[data-paste-week-workout="week-private-4"]').click();
-   await page.getByRole('heading',{name:'Paste a workout'}).waitFor();
+   await page.getByRole('heading',{name:'Choose a training day'}).waitFor();
    await page.locator('[data-paste-day="day-private-draft"]').click();
    await page.getByRole('heading',{name:'Workout Notepad'}).waitFor();
    assert.equal(await page.locator('#qwAllowReplace').count(),1,'existing workout cannot be silently replaced');
