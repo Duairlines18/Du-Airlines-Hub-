@@ -74,7 +74,10 @@ function pageSource(){
    const errors=[];
    page.on('pageerror',e=>errors.push(String(e)));
    await page.setContent(pageSource(),{waitUntil:'load'});
-   await page.getByRole('heading',{name:'Control Room'}).waitFor();
+   await page.getByRole('heading',{name:'Your Coaching Week'}).waitFor();
+   assert.equal(await page.locator('.cockpit-work-area').count(),1,'one coaching cockpit');
+   assert.ok((await page.locator('.cockpit-hero').innerText()).includes('At a glance'));
+   assert.ok((await page.locator('.cockpit-work-area').innerText()).includes('Showing '));
    await page.getByRole('heading',{name:"Next Week's Plans"}).waitFor();
    assert.equal(await page.locator('#runningProgrammes .week-command-row').count(),2,'one line for private programme and one school');
    assert.equal(await page.locator('#needsAttention .week-command-row').count(),1,'feedback grouped by person');
@@ -85,7 +88,7 @@ function pageSource(){
    await page.locator('#needsAttention [data-feedback-focus]').click();
    await page.getByRole('heading',{name:'Athlete Feedback'}).waitFor();
    await page.locator('#nav [data-page="dashboard"]').click();
-   await page.getByRole('heading',{name:'Control Room'}).waitFor();
+   await page.getByRole('heading',{name:'Your Coaching Week'}).waitFor();
    await page.locator('[data-roster-filter="active"]').click();
    await page.getByRole('heading',{name:'Athletes'}).waitFor();
    assert.equal(await page.locator('#athleteList .v3-person').count(),2);
@@ -116,7 +119,7 @@ function pageSource(){
    await page.locator('[data-paste-week-workout="week-private-4"]').click();
    await page.getByRole('heading',{name:'Paste a workout'}).waitFor();
    await page.locator('[data-paste-day="day-private-draft"]').click();
-   await page.getByRole('heading',{name:'Paste / Write Workout'}).waitFor();
+   await page.getByRole('heading',{name:'Workout Notepad'}).waitFor();
    assert.equal(await page.locator('#qwAllowReplace').count(),1,'existing workout cannot be silently replaced');
    assert.equal(await page.locator('#qwAllowReplace').isChecked(),false,'replace consent unchecked by default');
    await page.locator('#qwText').fill('### Warm Up\n- A-March 2 x 20m');
