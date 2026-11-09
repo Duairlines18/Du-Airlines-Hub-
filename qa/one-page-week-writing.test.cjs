@@ -42,7 +42,7 @@ test('advanced CRM content is expandable and same screen, not deleted',()=>{
 });
 
 test('paste from ChatGPT uses an explicit day choice and safe exercise matching',()=>{
- for(const fragment of ['function openPasteWorkoutForWeek(weekId)','data-paste-week-workout=','data-paste-day=','Paste from ChatGPT or type your workout','Review Exercises & Videos','qwAllowReplace','holder.dataset.rawText=raw','Workout text changed. Review exercises and videos again'])
+ for(const fragment of ['function openPasteWorkoutForWeek(weekId)','data-paste-week-workout=','data-paste-day=','Write naturally, or paste from ChatGPT','Review Exercises & Videos','qwAllowReplace','holder.dataset.rawText=raw','Workout text changed. Review exercises and videos again'])
   assert.ok(html.includes(fragment),fragment);
  assert.ok(html.includes("if(existing&&!document.getElementById('qwAllowReplace')?.checked)"));
  assert.ok(html.includes("if(liveWeekForTrainingDay(qwDay))"));

@@ -16,9 +16,9 @@ test('weekly command board groups private athletes and real schools without doub
   assert.ok(html.includes("activeAccount(a)&&!isSchoolAthlete(a)"));
   assert.ok(html.includes("c.status==='live'&&isSchoolCohort(c)"));
   assert.ok(html.includes('weeklyCommandRows()'));
-  assert.ok(html.includes("state.overviewShowAll?weekly:weekly.filter(x=>x.next.key!=='published')"));
+  assert.ok(html.includes("state.overviewShowAll?weekly:needPlan.slice(0,4)"));
   assert.ok(html.includes('Next Week\'s Plans'));
-  assert.ok(html.includes('Show all'));
+  assert.ok(html.includes('Expand all'));
 });
 test('publication status differentiates draft, published, missing and incomplete',()=>{
   assert.ok(html.includes('function weeklyPlanStatus(programmeId,number){'));
