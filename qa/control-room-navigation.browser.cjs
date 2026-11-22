@@ -37,12 +37,17 @@ const fixtures={
 };
 const stub=`<script>
 window.supabase={createClient:()=>({
- rpc:async(name,args)=>{
+ rpc(name,args){
+  if(name==='hub_visit_summary')return {range:async()=>({data:[
+    {visitor_kind:'private-athlete',athlete_id:'athlete-private',last_visit_at:'2026-11-08T13:00:00Z',this_week:2,last_12_days:4},
+  ],error:null})};
+  return (async()=>{
   if(name!=='admin_prepare_future_week_drafts')return {error:{message:'Unexpected QA RPC'}};
   const next=args.p_after_week+1;
   const current=window.__qaFixtures.programme_weeks.find(w=>w.programme_id===args.p_programme_id&&w.week_number===next);
   if(!current)window.__qaFixtures.programme_weeks.push({id:'week-private-'+next,programme_id:args.p_programme_id,week_number:next,status:'draft',verification_status:'needs_verification',published_at:null,phase:'Future training week'});
   return {data:{ok:true,status:'draft',published:false,created:current?[]:[next],existing:current?[next]:[]},error:null};
+  })();
  },
  functions:{invoke:async(slug,options)=>({error:null,data:options.body.type==='athlete'?
  {linked:true,kind:'athlete',recordId:'recNX9lsjD4zFX8OP',programme:'Synthetic Programme',crmWeek:5,deliveryStatus:'LIVE',nextDecision:'Synthetic coach decision for QA only'}:
@@ -64,6 +69,7 @@ function pageSource(){
   return fs.readFileSync(path.join(__dirname,'../index.html'),'utf8')
     .replace('<script src="access-codes.js"></script>','')
     .replace('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>',stub)
+    .replace('<script src="hub-engagement.js?v=20261122"></script>', '<script>'+fs.readFileSync(path.join(__dirname,'../hub-engagement.js'),'utf8')+'</script>')
     .replace('<script src="qa/workout-validation.js"></script>','<script>function workoutDeliveryIssues(){return [];}</script>');
 }
 (async()=>{
@@ -94,6 +100,10 @@ function pageSource(){
    assert.equal(await page.locator('#athleteList .v3-person').count(),2);
    await page.locator('[data-athlete-filter="private"]').click();
    assert.equal(await page.locator('#athleteList .v3-person').count(),1);
+   assert.match(await page.locator('#athleteList').innerText(),/2 visit days/);
+   await page.getByRole('combobox',{name:'Hub visit period'}).selectOption('last_12_days');
+   assert.match(await page.locator('#athleteList').innerText(),/4 visit days/);
+   assert.match(await page.locator('#athleteList').innerText(),/Weekly feedback/);
    await page.locator('[data-open-athlete="athlete-private"]').click();
    await page.getByRole('heading',{name:'Takunda Mutizwa'}).waitFor();
    await page.getByRole('heading',{name:'Your training week'}).waitFor();
