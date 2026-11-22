@@ -185,6 +185,7 @@ window.DU_AIRLINES_ENV = {
 <section id="recovery" class="login hidden"><div class="card"><div class="brand">DU AIRLINES <span>ADMIN</span></div><h1 style="margin-top:18px">Set New Password</h1><p class="muted">Choose a new password for your Control Room account.</p><form id="recoveryForm"><label>New password</label><input id="newPassword" type="password" minlength="8" required><label>Confirm password</label><input id="confirmPassword" type="password" minlength="8" required><p id="recoveryErr" style="color:#ffb4b4"></p><button class="btn primary" style="width:100%">Update password</button></form></div></section>
 <section id="app" class="hidden"><header class="top"><div class="brand">DU AIRLINES <span>ADMIN</span></div><div class="global-search-wrap"><input id="globalSearch" class="global-search" placeholder="Search athlete, school, programme or exercise…"><div id="globalSearchResults" class="global-search-results hidden"></div></div><button id="logout" class="btn ghost">Log out</button></header><div class="layout"><nav id="nav"></nav><main id="main"></main></div></section>
 <dialog id="modal"><form method="dialog" class="modal" id="modalForm"></form></dialog>
+<script src="hub-engagement.js?v=20261122"></script>
 <script src="qa/workout-validation.js"></script>
 <script>
 
@@ -193,6 +194,8 @@ const configured=!!(env.SUPABASE_URL&&env.SUPABASE_ANON_KEY);
 const sb=configured?window.supabase.createClient(env.SUPABASE_URL,env.SUPABASE_ANON_KEY):null;
 
 const state={
+  visitSummary:null,
+  visitPeriod:'this_week',
   page:'dashboard',
   admin:null,
   athletes:[],
@@ -474,6 +477,7 @@ async function load(){
   if(!sb)return;
   state.loadErrors=[];
   await Promise.all([
+    loadVisitSummary(),
     tableRows('athletes','athletes'),
     tableRows('professional_members','professionals'),
     tableRows('cohorts','cohorts'),
@@ -490,6 +494,45 @@ async function load(){
     tableRows('access_codes','accessCodes')
   ]);
   render();
+}
+
+async function loadVisitSummary(){
+  const rows=[];
+  try{
+    for(let offset=0;;offset+=500){
+      const {data,error}=await sb.rpc('hub_visit_summary').range(offset,offset+499);
+      if(error)throw error;
+      rows.push(...(data||[]));
+      if((data||[]).length<500)break;
+    }
+    state.visitSummary=new Map(rows.map(row=>[
+      DuHubEngagement.key(row.visitor_kind,row.athlete_id||row.staff_id),row,
+    ]));
+  }catch{
+    state.visitSummary=null;
+  }
+}
+
+function visitPeriodPicker(){
+  return `<label>Hub visits <select aria-label="Hub visit period" data-visit-period>
+    <option value="this_week" ${state.visitPeriod==='this_week'?'selected':''}>This week</option>
+    <option value="last_12_days" ${state.visitPeriod==='last_12_days'?'selected':''}>Last 12 days</option>
+  </select></label><p class="muted mini">One visit day per account. Weeks start Monday (Chicago time). History starts at rollout.</p>`;
+}
+
+function engagementDetails(kinds,id,feedback){
+  if(!kinds.length)return '';
+  const visits=kinds.map(kind=>{
+    const label=kinds.length>1||kind==='parent'?DuHubEngagement.kindLabels[kind]+' · ':'';
+    if(!state.visitSummary)return `<p>${esc(label)}Hub visits unavailable</p>`;
+    const visit=state.visitSummary.get(DuHubEngagement.key(kind,id));
+    const count=visit?.[state.visitPeriod]||0;
+    const last=visit?.last_visit_at?DuHubEngagement.visitFormat.format(new Date(visit.last_visit_at)):'No verified visit';
+    return `<p>${esc(label)}Last visit <strong>${esc(last)}</strong> · <strong>${count}</strong> visit day${count===1?'':'s'}</p>`;
+  }).join('');
+  const feedbackStatus=state.loadErrors.some(error=>error.startsWith('feedback:'))
+    ? 'Unavailable' : DuHubEngagement.feedbackSummary(feedback);
+  return visits+`<p>Weekly feedback · ${esc(feedbackStatus)}</p>`;
 }
 
 function metric(n,label){return `<div class="card metric"><strong>${n}</strong><div class="muted">${label}</div></div>`}
@@ -585,6 +628,7 @@ function renderAthletes(m){
   ));
   m.innerHTML=`${loadWarning()}<div class="v3-hero"><div><div class="kicker">People</div><h1>Athletes</h1><p class="muted">Choose a person to manage training or view their feedback history.</p></div></div>
   <div class="roster-filters" role="group" aria-label="Athlete filters">${filters.map(([key,label])=>`<button class="v3-tab ${state.athleteView===key?'active':''}" data-athlete-filter="${key}" aria-pressed="${state.athleteView===key}">${label}</button>`).join('')}</div>
+  ${visitPeriodPicker()}
   <input class="search" id="search" aria-label="Search athletes" placeholder="Search athlete, programme or school…">
   <p class="muted mini">${rows.length} athlete${rows.length===1?'':'s'} in this view</p>
   <div class="v3-list" id="athleteList">${athleteRows(rows)}</div>`;
@@ -596,9 +640,13 @@ function athleteRows(rows){
     const kind=athleteKind(a);
     const onboarding=(a.parent_user_id||a.athlete_user_id)?(a.onboarding_complete?'Onboarding complete':'Onboarding pending'):'School / legacy access';
     const searchText=[a.full_name||a.display_name,kind,cohortName(a.cohort_id),programme].join(' ').toLowerCase();
-    const feedbackCount=state.feedback.filter(f=>f.athlete_id===a.id).length;
+    const feedback=state.feedback.filter(f=>f.athlete_id===a.id);
+    const feedbackCount=feedback.length;
+    const visitKinds=isSchoolAthlete(a)?['school-athlete']:[
+      ...(a.athlete_user_id?['private-athlete']:[]), ...(a.parent_user_id?['parent']:[]),
+    ];
     return `<div class="v3-person" data-search="${esc(searchText)}">
-      <div><strong>${esc(a.full_name||a.display_name||'Unnamed athlete')}</strong><p>${esc(kind)} · Week ${esc(currentWeek)} · ${esc(programme)}</p><p>${esc(onboarding)}</p></div>
+      <div><strong>${esc(a.full_name||a.display_name||'Unnamed athlete')}</strong><p>${esc(kind)} · Week ${esc(currentWeek)} · ${esc(programme)}</p><p>${esc(onboarding)}</p>${engagementDetails(visitKinds,a.id,feedback)}</div>
       <div class="row v3-person-actions"><span class="pill">${esc(a.access_status||'pending')}</span>${programmeId?`<button class="btn primary" data-open-athlete="${a.id}">Open Athlete</button>`:`<button class="btn primary" data-edit-athlete="${a.id}">Set Up Programme</button>`}
       <button class="btn ghost" data-feedback-athlete="${a.id}">Feedback (${feedbackCount})</button><button class="btn ghost" data-edit-athlete="${a.id}">Profile</button></div>
     </div>`;
@@ -1712,7 +1760,7 @@ async function saveSubstitutions(){
 
 function renderStaff(m){
   m.innerHTML=`${loadWarning()}<div class="toolbar"><div><h1>Staff</h1><p class="muted">Named staff profiles. Shared Staff/Coach Hub access remains cohort-code based.</p></div></div>
-  <div class="list">${state.staff.map(x=>`<div class="item"><div><strong>${esc(x.full_name||x.display_name||'Unnamed staff')}</strong><p>${esc(x.role_title||'Coach / Staff')}</p></div><span class="pill">${esc(x.access_status||'active')}</span></div>`).join('')||'<div class="card muted">No staff profiles yet.</div>'}</div>`;
+  ${visitPeriodPicker()}<div class="list">${state.staff.map(x=>`<div class="item"><div><strong>${esc(x.full_name||x.display_name||'Unnamed staff')}</strong><p>${esc(x.role_title||'Coach / Staff')}</p>${engagementDetails(['school-staff'],x.id,state.feedback.filter(f=>f.staff_id===x.id))}</div><span class="pill">${esc(x.access_status||'active')}</span></div>`).join('')||'<div class="card muted">No staff profiles yet.</div>'}</div>`;
 }
 
 function renderProgrammes(m){
@@ -1973,6 +2021,18 @@ document.addEventListener('input',e=>{
   if(label)label.textContent='Choose a result to continue';
   const preview=document.getElementById('copyProgrammePreview');
   if(preview)preview.innerHTML='';
+});
+document.addEventListener('change',e=>{
+  if(!e.target.matches('[data-visit-period]'))return;
+  const search=document.getElementById('search')?.value;
+  state.visitPeriod=e.target.value;
+  render();
+  if(search){
+    const input=document.getElementById('search');
+    input.value=search;
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+  document.querySelector('[data-visit-period]')?.focus();
 });
 document.addEventListener('click',async e=>{
   const global=e.target.closest('[data-global-type]');
